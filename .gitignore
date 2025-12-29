@@ -1,0 +1,246 @@
+# ==========================================
+# 🔒 SECURITY & SENSITIVE DATA
+# ==========================================
+
+# Environment variables (CRITICAL!)
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+.env.test
+.env.backup
+*.env
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+database.db
+db.sqlite3
+
+# Backup files
+*.bak
+*.backup
+*.sql
+*.dump
+
+# Logs (potrebbero contenere dati sensibili)
+*.log
+logs/
+*.log.*
+
+# Configuration files con secrets
+config.ini
+settings.ini
+secrets.json
+credentials.json
+keys.json
+
+# ==========================================
+# 🐍 PYTHON STANDARD
+# ==========================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.virtualenv/
+
+# ==========================================
+# 🔧 DEVELOPMENT TOOLS
+# ==========================================
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.spyderproject
+.spyproject
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==========================================
+# 🚀 DEPLOYMENT & CLOUD
+# ==========================================
+
+# Railway
+.railway/
+
+# Docker
+Dockerfile.prod
+docker-compose.override.yml
+.dockerignore.prod
+
+# Heroku
+.heroku/
+
+# ==========================================
+# 📧 EMAIL & EXTERNAL SERVICES
+# ==========================================
+
+# Email templates backup (se contengono dati sensibili)
+email_backup/
+temp_emails/
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+
+# ==========================================
+# 🗃️ DATABASE DUMPS & BACKUPS
+# ==========================================
+
+# Database dumps
+*.sql
+*.dump
+backup_*.sql
+dump_*.sql
+
+# Migration backups
+migrations_backup/
+
+# ==========================================
+# 📊 ANALYTICS & MONITORING
+# ==========================================
+
+# Local monitoring data
+monitoring/
+metrics/
+performance/
+
+# ==========================================
+# 🧪 TESTING & DEBUG
+# ==========================================
+
+# Test databases
+test.db
+test_*.db
+*_test.sqlite
+
+# Debug files
+debug.log
+error.log
+debug_output/
+
+# ==========================================
+# 📁 TEMPORARY & CACHE
+# ==========================================
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+*.tmp
+*.temp
+
+# Cache directories
+.cache/
+__pycache__/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ==========================================
+# 💾 USER DATA & UPLOADS
+# ==========================================
+
+# Uploaded files (se li hai)
+uploads/
+media/
+static/uploads/
+user_data/
+
+# Generated files
+generated/
+output/
+
+# ==========================================
+# 🔍 SEARCH & INDEX FILES
+# ==========================================
+
+# Search index files
+*.idx
+search_index/
+
+# ==========================================
+# 📝 NOTES & DOCUMENTATION PRIVATA
+# ==========================================
+
+# Private notes
+NOTES.md
+TODO_PRIVATE.md
+SECRETS.md
+private_notes/
+
+# Client data
+client_data/
+customer_info/
+
+# ==========================================
+# END OF GITIGNORE
+# ==========================================
