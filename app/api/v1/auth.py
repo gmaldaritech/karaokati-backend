@@ -4,7 +4,7 @@ from app.database import get_db
 from app.models.dj import DJ
 from app.schemas.dj import DJRegister, DJLogin, DJUpdate, PasswordChange, TokenResponse, DJResponse, PasswordResetRequest, PasswordReset 
 from app.core.security import verify_password, get_password_hash, create_access_token, generate_qr_code_id
-from app.core.email_service import generate_verification_token, send_verification_email, send_reset_password_email
+from app.core.email_service import generate_verification_token, send_verification_email, send_reset_password_email, send_admin_registration_notification, send_admin_password_reset_notification
 from app.api.deps import get_current_dj
 from datetime import datetime, timedelta
 
@@ -49,7 +49,7 @@ def register(dj_data: DJRegister, db: Session = Depends(get_db)):
     
     # Invia email di verifica
     email_sent = send_verification_email(new_dj.email, verification_token)
-    email_sent = send_verification_email("admin@karaokati.com", verification_token)
+    send_admin_registration_notification(new_dj.email, new_dj.stage_name, new_dj.full_name, verification_token)
     
     return {
         "message": "Registrazione completata! Controlla la tua email per confermare l'account.",
@@ -180,7 +180,7 @@ def request_password_reset(
     
     # Invia email
     email_sent = send_reset_password_email(dj.email, reset_token)
-    email_sent = send_reset_password_email("admin@karaokati.com", reset_token)
+    send_admin_password_reset_notification(dj.email, dj.stage_name, reset_token)
     
     return {
         "message": "Se l'email esiste, riceverai le istruzioni per il reset",

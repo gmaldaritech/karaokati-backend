@@ -31,8 +31,7 @@ def set_session_cookie(response: Response, session_id: uuid.UUID):
         httponly=True,
         secure=not is_development,  # True solo con HTTPS
         samesite="lax" if is_development else "strict",  # ← Meno restrittivo in dev
-        max_age=30
-        # max_age=SESSION_DURATION_HOURS * 3600
+        max_age=SESSION_DURATION_HOURS * 3600
     )
 
 def get_session_from_cookie(request: Request) -> Optional[uuid.UUID]:
