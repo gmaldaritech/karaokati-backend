@@ -18,16 +18,29 @@ SESSION_DURATION_HOURS = 6
 
 # ==================== HELPER FUNCTIONS ====================
 
+# def set_session_cookie(response: Response, session_id: uuid.UUID):
+#     """Setta il cookie di sessione con configurazione sicura"""
+#     from app.core.config import settings
+    
+#     response.set_cookie(
+#         key="session_id",
+#         value=str(session_id),
+#         httponly=True,
+#         secure=settings.SECURE_COOKIES,
+#         samesite="strict" if settings.ENVIRONMENT == "production" else "lax",
+#         max_age=SESSION_DURATION_HOURS * 3600
+#     )
+
 def set_session_cookie(response: Response, session_id: uuid.UUID):
-    """Setta il cookie di sessione con configurazione sicura"""
     from app.core.config import settings
     
+    # Cookie cross-domain per Vercel ↔ Railway
     response.set_cookie(
         key="session_id",
         value=str(session_id),
         httponly=True,
-        secure=settings.SECURE_COOKIES,
-        samesite="strict" if settings.ENVIRONMENT == "production" else "lax",
+        secure=settings.ENVIRONMENT == "production",
+        samesite="none" if settings.ENVIRONMENT == "production" else "lax",
         max_age=SESSION_DURATION_HOURS * 3600
     )
 

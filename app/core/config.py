@@ -170,9 +170,6 @@ class Settings(BaseSettings):
     DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
     PORT: int = int(os.getenv("PORT", 8000))
     
-    # === SECURITY ===
-    SECURE_COOKIES: bool = os.getenv("SECURE_COOKIES", "false").lower() == "true"
-    
     # === CORS ===
     BACKEND_CORS_ORIGINS: str = os.getenv("BACKEND_CORS_ORIGINS", "[]")
 
