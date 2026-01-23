@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.database import engine, Base
 from app.api.v1 import auth, venues, songs, bookings, sessions, suggestions
-from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 import logging
@@ -28,8 +27,6 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # CORS
 app.add_middleware(
