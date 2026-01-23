@@ -3,7 +3,7 @@ from datetime import datetime
 
 def verification_email_template(verification_url: str, terms_url: str) -> tuple[str, str]:
     """Template email di verifica account"""
-    subject = "Attiva il tuo account - Karaokati"
+    subject = "🚀 Benvenuto in Karaokati - Completa la registrazione"
     html_body = f"""
     <!DOCTYPE html>
     <html lang="it">
@@ -142,7 +142,7 @@ def verification_email_template(verification_url: str, terms_url: str) -> tuple[
 
 def reset_password_email_template(reset_url: str, terms_url: str) -> tuple[str, str]:
     """Template email reset password"""
-    subject = "Reset Password - Karaokati"
+    subject = "🔐 Reset della tua password Karaokati"
     html_body = f"""
     <!DOCTYPE html>
     <html lang="it">
@@ -274,7 +274,7 @@ def reset_password_email_template(reset_url: str, terms_url: str) -> tuple[str, 
 
 def account_deletion_email_template(stage_name: str, full_name: str, terms_url: str) -> tuple[str, str]:
     """Template email cancellazione account utente"""
-    subject = "Account Eliminato - Karaokati"
+    subject = "👋 Addio da Karaokati - Account rimosso"
     html_body = f"""
     <!DOCTYPE html>
     <html lang="it">

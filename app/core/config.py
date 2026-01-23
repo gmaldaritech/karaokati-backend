@@ -154,12 +154,16 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_DAYS: int = 2
     
     # === EMAIL CONFIGURATION ===
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.zoho.eu")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    SMTP_TLS: bool = os.getenv("SMTP_TLS", "True").lower() == "true"
-    SMTP_USER: str = os.getenv("SMTP_USER", "user")
-    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "passsword")
-    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "from")
+    # SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.zoho.eu")
+    # SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    # SMTP_TLS: bool = os.getenv("SMTP_TLS", "True").lower() == "true"
+    # SMTP_USER: str = os.getenv("SMTP_USER", "user")
+    # SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "passsword")
+    # EMAIL_FROM: str = os.getenv("EMAIL_FROM", "from")
+
+    RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
+    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "admin@karaokati.com")
+    EMAIL_FROM_NAME: str = os.getenv("EMAIL_FROM_NAME", "Karaokati")
     
     # === ENVIRONMENT ===
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
