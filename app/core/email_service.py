@@ -25,8 +25,10 @@ def get_frontend_url(request=None, path=""):
     if request and hasattr(request, 'headers'):
         frontend_origin = request.headers.get('x-frontend-origin')
         if frontend_origin:
+            print(f"{frontend_origin}{path}")
             return f"{frontend_origin}{path}"
     
+    print(f"{settings.FRONTEND_URL}{path}")
     return f"{settings.FRONTEND_URL}{path}"
 
 def send_verification_email(email: str, token: str, request=None):
