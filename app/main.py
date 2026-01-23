@@ -5,6 +5,19 @@ from app.database import engine, Base
 from app.api.v1 import auth, venues, songs, bookings, sessions, suggestions
 from fastapi.staticfiles import StaticFiles
 
+from app.core.config import settings
+import logging
+
+# 🆕 Configure logging for production
+if settings.ENVIRONMENT == "production":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+# Create tables
+Base.metadata.create_all(bind=engine)
+
 # Create tables
 Base.metadata.create_all(bind=engine)
 
@@ -47,4 +60,9 @@ def root():
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "database": "connected"}
+    return {
+        "status": "healthy", 
+        "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT,
+        "database": "connected"
+    }

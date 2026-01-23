@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.dj import DJ
@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 router = APIRouter()
 
 @router.post("/register", response_model=dict, status_code=status.HTTP_201_CREATED)
-def register(dj_data: DJRegister, db: Session = Depends(get_db)):
+def register(dj_data: DJRegister, request: Request, db: Session = Depends(get_db)):
     # Verifica se email esiste già 
     existing_dj = db.query(DJ).filter(DJ.email == dj_data.email).first()
     
@@ -48,8 +48,8 @@ def register(dj_data: DJRegister, db: Session = Depends(get_db)):
     db.refresh(new_dj)
     
     # Invia email di verifica
-    email_sent = send_verification_email(new_dj.email, verification_token)
-    send_admin_registration_notification(new_dj.email, new_dj.stage_name, new_dj.full_name, verification_token)
+    email_sent = send_verification_email(new_dj.email, verification_token, request)
+    send_admin_registration_notification(new_dj.email, new_dj.stage_name, new_dj.full_name, verification_token, request)
     
     return {
         "message": "Registrazione completata! Controlla la tua email per confermare l'account.",
@@ -160,7 +160,8 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
 @router.post("/request-password-reset")
 def request_password_reset(
-    request_data: PasswordResetRequest, 
+    request_data: PasswordResetRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """Richiede reset password"""
@@ -179,8 +180,8 @@ def request_password_reset(
     db.commit()
     
     # Invia email
-    email_sent = send_reset_password_email(dj.email, reset_token)
-    send_admin_password_reset_notification(dj.email, dj.stage_name, reset_token)
+    email_sent = send_reset_password_email(dj.email, reset_token, request)
+    send_admin_password_reset_notification(dj.email, dj.stage_name, reset_token, request)
     
     return {
         "message": "Se l'email esiste, riceverai le istruzioni per il reset",
@@ -361,8 +362,44 @@ def resend_verification(
         "message": "Email reinviata con successo"
     }
 
+# @router.delete("/delete-account")
+# def delete_account(
+#     current_dj: DJ = Depends(get_current_dj),
+#     db: Session = Depends(get_db)
+# ):
+#     """
+#     Elimina definitivamente l'account del DJ corrente.
+    
+#     Args:
+#         current_dj: DJ autenticato
+#         db: Database session
+        
+#     Returns:
+#         dict: Messaggio di conferma eliminazione
+        
+#     Note:
+#         - Eliminazione a cascata di venue, songs, bookings, sessions
+#         - IRREVERSIBILE: tutti i dati vengono persi
+#         - Richiede solo autenticazione JWT
+#     """
+#     # Salva dati per response
+#     dj_id = current_dj.id
+#     stage_name = current_dj.stage_name
+    
+#     # Elimina DJ (cascade eliminerà tutto il resto)
+#     db.delete(current_dj)
+#     db.commit()
+    
+#     return {
+#         "message": "Account eliminato definitivamente",
+#         "deleted_dj_id": dj_id,
+#         "stage_name": stage_name,
+#         "note": "Tutti i dati associati sono stati eliminati permanentemente"
+#     }
+
 @router.delete("/delete-account")
 def delete_account(
+    request: Request,
     current_dj: DJ = Depends(get_current_dj),
     db: Session = Depends(get_db)
 ):
@@ -371,6 +408,7 @@ def delete_account(
     
     Args:
         current_dj: DJ autenticato
+        request: HTTP request per email URL dinamici
         db: Database session
         
     Returns:
@@ -379,19 +417,28 @@ def delete_account(
     Note:
         - Eliminazione a cascata di venue, songs, bookings, sessions
         - IRREVERSIBILE: tutti i dati vengono persi
-        - Richiede solo autenticazione JWT
+        - Invia email di conferma all'utente e all'admin
     """
-    # Salva dati per response
+    from app.core.email_service import send_account_deletion_email, send_admin_account_deletion_notification
+    
+    # Salva dati per email prima dell'eliminazione
     dj_id = current_dj.id
     stage_name = current_dj.stage_name
+    dj_email = current_dj.email
+    full_name = current_dj.full_name
     
     # Elimina DJ (cascade eliminerà tutto il resto)
     db.delete(current_dj)
     db.commit()
     
+    # 🆕 Invia email di conferma
+    send_account_deletion_email(dj_email, stage_name, full_name, request)
+    send_admin_account_deletion_notification(dj_email, stage_name, full_name, request)
+    
     return {
         "message": "Account eliminato definitivamente",
         "deleted_dj_id": dj_id,
         "stage_name": stage_name,
+        "email_sent": True,
         "note": "Tutti i dati associati sono stati eliminati permanentemente"
     }
