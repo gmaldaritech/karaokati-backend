@@ -13,6 +13,7 @@ from app.schemas.booking import BookingCreate, BookingResponse, BookingWithVenue
 from app.api.deps import get_current_dj
 
 from app.core.config import settings
+from sqlalchemy import func
 
 router = APIRouter()
 
@@ -129,6 +130,43 @@ def reject_booking(
     
     return {"message": "Prenotazione rifiutata", "status": "rejected"}
 
+@router.delete("/all")
+def delete_all_bookings(
+    current_dj: DJ = Depends(get_current_dj),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Elimina TUTTE le prenotazioni di TUTTI i locali del DJ.
+    """
+    # Prima recupera gli ID dei venue del DJ
+    venue_ids = db.query(Venue.id).filter(
+        Venue.dj_id == current_dj.id
+    ).subquery()
+    
+    # Resetta tutti i contatori delle sessioni degli utenti
+    sessions_to_reset = db.query(Session).join(
+        Booking, Session.id == Booking.session_id
+    ).filter(
+        Booking.venue_id.in_(venue_ids),
+        Booking.session_id.isnot(None)
+    ).distinct().all()
+    
+    for session in sessions_to_reset:
+        session.booking_count = 0
+    
+    # Poi cancella le prenotazioni
+    deleted_count = db.query(Booking).filter(
+        Booking.venue_id.in_(venue_ids)
+    ).delete(synchronize_session=False)
+    
+    db.commit()
+    
+    return {
+        "message": "Tutte le prenotazioni dei vari locali sono state eliminate",
+        "deleted": deleted_count,
+        "dj_stage_name": current_dj.stage_name
+    }
+
 @router.delete("/{booking_id}")
 def delete_booking(
     booking_id: int,
@@ -143,6 +181,12 @@ def delete_booking(
     
     if not booking:
         raise HTTPException(status_code=404, detail="Prenotazione non trovata")
+    
+    # Se la prenotazione ha una sessione (utente), decrementa il contatore
+    if booking.session_id:
+        session = db.query(Session).filter(Session.id == booking.session_id).first()
+        if session:
+            session.booking_count = max(0, session.booking_count - 1)
     
     db.delete(booking)
     db.commit()
@@ -164,36 +208,25 @@ def delete_venue_bookings(
     if not venue:
         raise HTTPException(status_code=404, detail="Locale non trovato")
     
+    # Aggiorna contatori sessioni prima di cancellare
+    sessions_to_update = db.query(Session.id, func.count(Booking.id).label('count')).join(
+        Booking, Session.id == Booking.session_id
+    ).filter(
+        Booking.venue_id == venue_id,
+        Booking.session_id.isnot(None)
+    ).group_by(Session.id).all()
+    
+    for session_id, booking_count in sessions_to_update:
+        session = db.query(Session).filter(Session.id == session_id).first()
+        if session:
+            session.booking_count = max(0, session.booking_count - booking_count)
+    
     deleted_count = db.query(Booking).filter(Booking.venue_id == venue_id).delete()
     db.commit()
     
     return {
         "message": "Tutte le prenotazioni eliminate",
         "deleted": deleted_count
-    }
-
-@router.delete("/all")
-def delete_all_bookings(
-    current_dj: DJ = Depends(get_current_dj),
-    db: DBSession = Depends(get_db)
-):
-    """
-    Elimina TUTTE le prenotazioni di TUTTI i locali del DJ.
-    
-    Returns:
-        dict: Numero totale di prenotazioni eliminate
-    """
-    # Elimina tutte le prenotazioni dei venue del DJ
-    deleted_count = db.query(Booking).join(Venue).filter(
-        Venue.dj_id == current_dj.id
-    ).delete(synchronize_session=False)
-    
-    db.commit()
-    
-    return {
-        "message": "Tutte le prenotazioni dei vari locali sono state eliminate",
-        "deleted": deleted_count,
-        "dj_stage_name": current_dj.stage_name
     }
 
 # ==================== USER ENDPOINTS ====================
