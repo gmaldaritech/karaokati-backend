@@ -55,27 +55,27 @@ def send_email(to_email: str, subject: str, html_body: str):
         return False
 
 def send_verification_email(email: str, token: str, request=None):
-    """Invia email di verifica (INVARIATA)"""
+    """Invia email di verifica"""
     verification_url = get_frontend_url(request, f"/verify-email/{token}")
     terms_url = get_frontend_url(request, "/terms")
     subject, html_body = verification_email_template(verification_url, terms_url)
     return send_email(email, subject, html_body)
 
 def send_reset_password_email(email: str, token: str, request=None):
-    """Invia email di reset password (INVARIATA)"""
+    """Invia email di reset password"""
     reset_url = get_frontend_url(request, f"/reset-password/{token}")
     terms_url = get_frontend_url(request, "/terms")
     subject, html_body = reset_password_email_template(reset_url, terms_url)
     return send_email(email, subject, html_body)
 
 def send_account_deletion_email(email: str, stage_name: str, full_name: str, request=None):
-    """Invia email di conferma cancellazione account all'utente (INVARIATA)"""
+    """Invia email di conferma cancellazione account all'utente"""
     terms_url = get_frontend_url(request, "/terms")
     subject, html_body = account_deletion_email_template(stage_name, full_name, terms_url)
     return send_email(email, subject, html_body)
 
 def send_admin_registration_notification(dj_email: str, stage_name: str, full_name: str, verification_token: str, request=None):
-    """Invia notifica admin per nuova registrazione (INVARIATA)"""
+    """Invia notifica admin per nuova registrazione"""
     from app.core.config import settings
     
     verification_url = get_frontend_url(request, f"/verify-email/{verification_token}")
@@ -87,7 +87,7 @@ def send_admin_registration_notification(dj_email: str, stage_name: str, full_na
     return send_email(admin_email, subject, html_body)
 
 def send_admin_password_reset_notification(dj_email: str, stage_name: str, reset_token: str, request=None):
-    """Invia notifica admin per reset password (INVARIATA)"""
+    """Invia notifica admin per reset password"""
     from app.core.config import settings
     
     reset_url = get_frontend_url(request, f"/reset-password/{reset_token}")
@@ -99,7 +99,7 @@ def send_admin_password_reset_notification(dj_email: str, stage_name: str, reset
     return send_email(admin_email, subject, html_body)
 
 def send_admin_account_deletion_notification(dj_email: str, stage_name: str, full_name: str, request=None):
-    """Invia notifica admin per cancellazione account (INVARIATA)"""
+    """Invia notifica admin per cancellazione account"""
     from app.core.config import settings
     
     subject, html_body = admin_account_deletion_notification_template(
