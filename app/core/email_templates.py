@@ -8,7 +8,6 @@ def verification_email_template(verification_url: str, terms_url: str) -> tuple[
     unique_id = str(uuid.uuid4())[:8]
     
     subject = "🚀 Benvenuto in Karaokati - Completa la registrazione"
-    
     html_body = f"""
     <!DOCTYPE html>
     <html lang="it">
@@ -19,16 +18,24 @@ def verification_email_template(verification_url: str, terms_url: str) -> tuple[
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #111827;">
 
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #9333ea, #ec4899); padding: 50px 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #9333ea, #ec4899); padding: 25px 20px;">
     <tr>
     <td align="center">
-        <div style="background-color: rgba(255,255,255,0.2); border-radius: 50%; padding: 20px; display: inline-block; margin-bottom: 20px;">
-            <img src="https://img.icons8.com/fluency/64/ffffff/new-post.png" alt="Email" width="48" height="48" style="display: block;">
+        <!-- Logo principale più piccolo -->
+        <img src="https://www.karaokati.com/logo.png" alt="Karaokati Logo" style="height: 35px; width: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;" />
+        
+        <!-- Linea separatrice sottile -->
+        <div style="background: rgba(255,255,255,0.3); height: 1px; width: 40px; margin: 0 auto 12px auto;"></div>
+        
+        <!-- Icona email decorativa leggermente più grande -->
+        <div style="background-color: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; padding: 8px; display: block; width: 36px; height: 36px; margin: 0 auto 15px auto;">
+            <img src="https://img.icons8.com/fluency/64/ffffff/new-post.png" alt="Email" width="36" height="36" style="display: block;" />
         </div>
-        <h1 style="color: #ffffff; font-size: 26px; font-weight: bold; margin: 0 0 10px 0; text-align: center;">
+        
+        <h1 style="color: #ffffff; font-size: 22px; font-weight: bold; margin: 0 0 8px 0; text-align: center;">
             Benvenuto su Karaokati
         </h1>
-        <p style="color: rgba(255,255,255,0.9); font-size: 16px; margin: 0; text-align: center;">
+        <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0; text-align: center;">
             Verifica il tuo indirizzo email per iniziare
         </p>
     </td>
@@ -104,15 +111,17 @@ def verification_email_template(verification_url: str, terms_url: str) -> tuple[
             <p style="color: #6b7280; font-size: 13px; line-height: 1.6; margin: 0 0 20px 0;">
                 Per qualsiasi problema, contattaci su <a href="mailto:support@karaokati.com" style="color: #c084fc; text-decoration: none;">support@karaokati.com</a>
             </p>
-            <p style="color: #9333ea; font-size: 16px; font-weight: 600; margin: 0;">
+            <p style="color: #9333ea; font-size: 16px; font-weight: 600; margin: 0 0 30px 0;">
                 Il Team Karaokati 🎤
             </p>
+            <!-- Logo circolare sotto la firma -->
+            <img src="https://www.karaokati.com/logo_circle_email.png" alt="Karaokati Logo" style="width: 50px; height: 50px; display: block; margin: 0 auto;" />
         </div>
     </td>
     </tr>
     </table>
 
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #111827; padding: 30px 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #111827; padding: 25px 20px;">
     <tr>
     <td align="center">
         <div style="max-width: 600px; margin: 0 auto; text-align: center;">
@@ -122,9 +131,8 @@ def verification_email_template(verification_url: str, terms_url: str) -> tuple[
             <p style="color: #4b5563; font-size: 12px; margin: 0;">
                 <a href="{terms_url}" style="color: #9ca3af; text-decoration: none;">Termini di Servizio</a>
             </p>
-            
-            <div style="display: none; max-height: 0px; overflow: hidden; font-size: 1px; line-height: 1px; color: #111827;">
-                Ref ID: {unique_id}
+            <div style="display: none; max-height: 0px; overflow: hidden; font-size: 1px; color: #111827;">
+                Ref: {unique_id}
             </div>
         </div>
     </td>
@@ -150,16 +158,24 @@ def reset_password_email_template(reset_url: str, terms_url: str) -> tuple[str, 
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #111827;">
 
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #9333ea, #ec4899); padding: 50px 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #9333ea, #ec4899); padding: 25px 20px;">
     <tr>
     <td align="center">
-        <div style="background-color: rgba(255,255,255,0.2); border-radius: 50%; padding: 20px; display: inline-block; margin-bottom: 20px;">
-            <img src="https://img.icons8.com/fluency/64/ffffff/lock.png" alt="Lock" width="48" height="48" style="display: block;">
+        <!-- Logo principale più piccolo -->
+        <img src="https://www.karaokati.com/logo.png" alt="Karaokati Logo" style="height: 35px; width: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;" />
+        
+        <!-- Linea separatrice sottile -->
+        <div style="background: rgba(255,255,255,0.3); height: 1px; width: 40px; margin: 0 auto 12px auto;"></div>
+        
+        <!-- Icona lock decorativa -->
+        <div style="background-color: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; padding: 8px; display: block; width: 36px; height: 36px; margin: 0 auto 15px auto;">
+            <img src="https://img.icons8.com/fluency/64/ffffff/lock.png" alt="Lock" width="36" height="36" style="display: block;" />
         </div>
-        <h1 style="color: #ffffff; font-size: 26px; font-weight: bold; margin: 0 0 10px 0; text-align: center;">
+        
+        <h1 style="color: #ffffff; font-size: 22px; font-weight: bold; margin: 0 0 8px 0; text-align: center;">
             Reset della Password
         </h1>
-        <p style="color: rgba(255,255,255,0.9); font-size: 16px; margin: 0; text-align: center;">
+        <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0; text-align: center;">
             Hai richiesto di reimpostare la tua password
         </p>
     </td>
@@ -224,15 +240,17 @@ def reset_password_email_template(reset_url: str, terms_url: str) -> tuple[str, 
             <p style="color: #6b7280; font-size: 13px; line-height: 1.6; margin: 0 0 20px 0;">
                 Per qualsiasi problema, contattaci su <a href="mailto:support@karaokati.com" style="color: #c084fc; text-decoration: none;">support@karaokati.com</a>
             </p>
-            <p style="color: #9333ea; font-size: 16px; font-weight: 600; margin: 0;">
+            <p style="color: #9333ea; font-size: 16px; font-weight: 600; margin: 0 0 30px 0;">
                 Il Team Karaokati 🎤
             </p>
+            <!-- Logo circolare sotto la firma -->
+            <img src="https://www.karaokati.com/logo_circle_email.png" alt="Karaokati Logo" style="width: 50px; height: 50px; display: block; margin: 0 auto;" />
         </div>
     </td>
     </tr>
     </table>
 
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #111827; padding: 30px 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #111827; padding: 25px 20px;">
     <tr>
     <td align="center">
         <div style="max-width: 600px; margin: 0 auto; text-align: center;">
@@ -259,7 +277,7 @@ def account_deletion_email_template(stage_name: str, full_name: str, terms_url: 
     """Template email cancellazione account utente con anti-clipping"""
     unique_id = str(uuid.uuid4())[:8]
     subject = "👋 Addio da Karaokati - Account rimosso"
-    html_body = f"""
+    html_body=f"""
     <!DOCTYPE html>
     <html lang="it">
     <head>
@@ -269,16 +287,24 @@ def account_deletion_email_template(stage_name: str, full_name: str, terms_url: 
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #111827;">
 
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #9333ea, #ec4899); padding: 50px 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #9333ea, #ec4899); padding: 25px 20px;">
     <tr>
     <td align="center">
-        <div style="background-color: rgba(255, 255, 255, 0.2); border-radius: 50%; padding: 20px; display: inline-block; margin-bottom: 20px;">
-            <span style="font-size: 40px; color: white;">👋</span>
-        </div>
-        <h1 style="color: white; font-size: 28px; font-weight: 700; margin: 0 0 10px 0; text-align: center;">
+        <!-- Logo principale più piccolo -->
+        <img src="https://www.karaokati.com/logo.png" alt="Karaokati Logo" style="height: 35px; width: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;" />
+        
+        <!-- Linea separatrice sottile -->
+        <div style="background: rgba(255,255,255,0.3); height: 1px; width: 40px; margin: 0 auto 12px auto;"></div>
+        
+        <!-- Icona wave decorativa -->
+    <div style="background-color: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; padding: 8px; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; margin: 0 auto 15px auto;">
+        <span style="font-size: 26px; color: white;">👋</span>
+    </div>
+
+        <h1 style="color: white; font-size: 22px; font-weight: 700; margin: 0 0 8px 0; text-align: center;">
             Arrivederci, {stage_name}!
         </h1>
-        <p style="color: rgba(255, 255, 255, 0.9); font-size: 16px; margin: 0; text-align: center;">
+        <p style="color: rgba(255, 255, 255, 0.9); font-size: 14px; margin: 0; text-align: center;">
             Il tuo account Karaokati è stato eliminato con successo
         </p>
     </td>
@@ -296,17 +322,17 @@ def account_deletion_email_template(stage_name: str, full_name: str, terms_url: 
                 Il tuo account DJ <strong style="color: #c084fc;">{stage_name}</strong> è stato eliminato definitivamente dal nostro sistema.
             </p>
             
-            <div style="background-color: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 20px; margin: 25px 0;">
-                <p style="color: #93c5fd; font-size: 14px; margin: 0 0 8px 0; font-weight: 600;">
-                    📋 Dati eliminati
-                </p>
-                <ul style="color: #3b82f6; font-size: 13px; margin: 0; padding-left: 16px; line-height: 1.8; text-align: left;">
-                    <li>🎤 Profilo DJ e informazioni personali</li>
-                    <li>🎵 Catalogo canzoni completo</li>
-                    <li>📅 Cronologia prenotazioni</li>
-                    <li>📱 QR Code e configurazioni</li>
-                </ul>
-            </div>
+    <div style="background-color: rgba(239, 68, 68, 0.25); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 12px; padding: 20px; margin: 25px 0;">
+        <p style="color: #fee2e2; font-size: 14px; margin: 0 0 8px 0; font-weight: 600;">
+            📋 Dati eliminati
+        </p>
+        <ul style="color: #fca5a5; font-size: 13px; margin: 0; padding-left: 16px; line-height: 1.8; text-align: left;">
+            <li>🎤 Profilo DJ e informazioni personali</li>
+            <li>🎵 Catalogo canzoni completo</li>
+            <li>📅 Cronologia prenotazioni</li>
+            <li>📱 QR Code e configurazioni</li>
+        </ul>
+    </div>
             
             <p style="color: #d1d5db; font-size: 15px; line-height: 1.6; margin: 25px 0 0 0;">
                 Grazie per aver utilizzato <strong style="color: #c084fc;">Karaokati</strong>! 
@@ -332,15 +358,17 @@ def account_deletion_email_template(stage_name: str, full_name: str, terms_url: 
             <p style="color: #6b7280; font-size: 13px; line-height: 1.6; margin: 0 0 15px 0;">
                 Speriamo di rivederti presto su Karaokati.
             </p>
-            <p style="color: #9333ea; font-size: 16px; font-weight: 600; margin: 0;">
+            <p style="color: #9333ea; font-size: 16px; font-weight: 600; margin: 0 0 30px 0;">
                 Il Team Karaokati 🎤
             </p>
+            <!-- Logo circolare sotto la firma -->
+            <img src="https://www.karaokati.com/logo_circle_email.png" alt="Karaokati Logo" style="width: 50px; height: 50px; display: block; margin: 0 auto;" />
         </div>
     </td>
     </tr>
     </table>
 
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #111827; padding: 30px 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #111827; padding: 25px 20px;">
     <tr>
     <td align="center">
         <div style="max-width: 600px; margin: 0 auto; text-align: center;">
