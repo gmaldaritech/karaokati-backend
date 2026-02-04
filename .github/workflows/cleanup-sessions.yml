@@ -1,0 +1,58 @@
+name: 🧹 Cleanup Sessioni Scadute
+
+on:
+  schedule:
+    # Esegue ogni giorno alle 8 UTC
+    - cron: '0 8 * * *'
+  
+  # Permetti esecuzione manuale dal tab Actions
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    name: Pulizia Sessioni
+    
+    steps:
+      - name: 📋 Info Cleanup
+        run: |
+          echo "🧹 Avvio cleanup sessioni scadute"
+          echo "📅 Data: $(date)"
+          echo "🌍 Timezone: $(date +%Z)"
+      
+      - name: 🔄 Chiama endpoint cleanup
+        run: |
+          # Sostituisci YOUR_RAILWAY_URL con l'URL del tuo deployment
+          CLEANUP_URL="https://api.karaokati.com/api/v1/sessions/cleanup"
+          
+          echo "📡 Chiamando: $CLEANUP_URL"
+          
+          # Chiamata con retry e timeout
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 5 \
+            -X GET "$CLEANUP_URL")
+          
+          # Estrai status code
+          http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
+          body=$(echo "$response" | sed '/HTTP_STATUS:/d')
+          
+          echo "📊 Status: $http_status"
+          echo "📝 Response: $body"
+          
+          # Verifica successo
+          if [ "$http_status" -eq 200 ]; then
+            echo "✅ Cleanup completato con successo!"
+            echo "::notice::Sessioni pulite: $body"
+          else
+            echo "❌ Errore durante cleanup (HTTP $http_status)"
+            echo "::error::Cleanup fallito: $body"
+            exit 1
+          fi
+
+      - name: 📊 Log risultato
+        if: always()
+        run: |
+          echo "🏁 Cleanup job terminato"
+          echo "⏰ Completato alle: $(date)"
