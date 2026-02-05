@@ -183,7 +183,7 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{
               \"from\": \"Karaokati Alert <alerts@karaokati.com>\",
-              \"to\": [\"${{ secrets.ALERT_EMAIL }}\"],
+              \"to\": [\"${{ secrets.ADMIN_EMAIL }}\"],
               \"subject\": \"$EMAIL_SUBJECT\",
               \"html\": $(echo "$EMAIL_HTML" | jq -Rs .)
             }")

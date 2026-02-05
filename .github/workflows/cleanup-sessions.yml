@@ -21,8 +21,9 @@ jobs:
           echo "🌍 Timezone: $(date +%Z)"
       
       - name: 🔄 Chiama endpoint cleanup
+        id: cleanup_call
         run: |
-          # Sostituisci YOUR_RAILWAY_URL con l'URL del tuo deployment
+          # Endpoint cleanup
           CLEANUP_URL="https://api.karaokati.com/api/v1/sessions/cleanup"
           
           echo "📡 Chiamando: $CLEANUP_URL"
@@ -41,18 +42,83 @@ jobs:
           echo "📊 Status: $http_status"
           echo "📝 Response: $body"
           
+          # Salva output per gli step successivi
+          echo "HTTP_STATUS=$http_status" >> $GITHUB_OUTPUT
+          echo "RESPONSE_BODY=$body" >> $GITHUB_OUTPUT
+          echo "TIMESTAMP=$(date '+%d/%m/%Y alle %H:%M UTC')" >> $GITHUB_OUTPUT
+          
           # Verifica successo
           if [ "$http_status" -eq 200 ]; then
             echo "✅ Cleanup completato con successo!"
             echo "::notice::Sessioni pulite: $body"
+            echo "SUCCESS=true" >> $GITHUB_OUTPUT
           else
             echo "❌ Errore durante cleanup (HTTP $http_status)"
             echo "::error::Cleanup fallito: $body"
+            echo "SUCCESS=false" >> $GITHUB_OUTPUT
             exit 1
           fi
 
-      - name: 📊 Log risultato
+      - name: 📧 Send Success Email
+        if: steps.cleanup_call.outputs.SUCCESS == 'true'
+        run: |
+          echo "📧 Sending cleanup success notification..."
+          
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -X POST "https://api.resend.com/emails" \
+            -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "from": "Karaokati Maintenance <maintenance@karaokati.com>",
+              "to": ["${{ secrets.ADMIN_EMAIL }}"],
+              "subject": "✅ KARAOKATI - Cleanup Sessioni Completato (${{ steps.cleanup_call.outputs.TIMESTAMP }})",
+              "html": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\"><div style=\"background: #28a745; color: white; padding: 20px; border-radius: 8px 8px 0 0;\"><h1 style=\"margin: 0; font-size: 24px;\">✅ Cleanup Sessioni Completato</h1></div><div style=\"background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;\"><h2 style=\"color: #28a745; margin-top: 0;\">🎯 Operazione Completata</h2><div style=\"background: white; padding: 15px; border-radius: 5px; margin: 15px 0;\"><h3 style=\"margin-top: 0; color: #495057;\">📊 Dettagli:</h3><table style=\"width: 100%; border-collapse: collapse;\"><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold; width: 40%;\">🕐 Timestamp:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.TIMESTAMP }}</td></tr><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold;\">📊 Status HTTP:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.HTTP_STATUS }}</td></tr><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold;\">📝 Risultato:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.RESPONSE_BODY }}</td></tr><tr><td style=\"padding: 8px 0; font-weight: bold;\">🔄 Prossimo cleanup:</td><td style=\"padding: 8px 0;\">Domani alle 08:00 UTC</td></tr></table></div><div style=\"background: #e8f5e8; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745;\"><p style=\"margin: 0; color: #155724;\">✅ <strong>Sistema funzionante:</strong> Cleanup automatico eseguito correttamente</p></div></div></div>"
+            }')
+          
+          http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
+          
+          if [[ "$http_status" == "200" ]]; then
+            echo "✅ Success email sent successfully!"
+            echo "📧 Cleanup success notification delivered"
+          else
+            echo "⚠️ Failed to send success email (HTTP $http_status)"
+            echo "::warning::Email notification failed but cleanup succeeded"
+          fi
+
+      - name: 📧 Send Failure Email  
+        if: failure()
+        run: |
+          echo "📧 Sending cleanup failure alert..."
+          
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -X POST "https://api.resend.com/emails" \
+            -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "from": "Karaokati Alerts <alerts@karaokati.com>",
+              "to": ["${{ secrets.ADMIN_EMAIL }}"],
+              "subject": "🚨 KARAOKATI CLEANUP FAILED - Sessioni (${{ steps.cleanup_call.outputs.TIMESTAMP }})",
+              "html": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\"><div style=\"background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0;\"><h1 style=\"margin: 0; font-size: 24px;\">🚨 Cleanup Sessioni Fallito</h1></div><div style=\"background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;\"><h2 style=\"color: #dc3545; margin-top: 0;\">❌ Errore nel Cleanup</h2><div style=\"background: white; padding: 15px; border-radius: 5px; margin: 15px 0;\"><h3 style=\"margin-top: 0; color: #495057;\">🔍 Dettagli Errore:</h3><table style=\"width: 100%; border-collapse: collapse;\"><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold; width: 40%;\">🕐 Timestamp:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.TIMESTAMP || ''}} $(date)</td></tr><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold;\">📊 Status HTTP:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.HTTP_STATUS || 'N/A' }}</td></tr><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold;\">❌ Errore:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.RESPONSE_BODY || 'Timeout o errore di connessione' }}</td></tr><tr><td style=\"padding: 8px 0; font-weight: bold;\">🔧 Endpoint:</td><td style=\"padding: 8px 0;\">https://api.karaokati.com/api/v1/sessions/cleanup</td></tr></table></div><div style=\"background: #f8d7da; padding: 15px; border-radius: 5px; border-left: 4px solid #dc3545;\"><p style=\"margin: 0; color: #721c24;\">⚠️ <strong>Azione Richiesta:</strong> Verificare lo stato del server e controllare i log applicativi</p></div><div style=\"margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;\"><p style=\"margin: 0; color: #856404;\">💡 <strong>Prossimi Passi:</strong><br>1. Verificare connessione server<br>2. Controllare logs applicazione<br>3. Eseguire cleanup manuale se necessario</p></div></div></div>"
+            }')
+          
+          http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
+          
+          if [[ "$http_status" == "200" ]]; then
+            echo "✅ Failure alert sent successfully!"
+            echo "📧 Admin notified of cleanup failure"
+          else
+            echo "❌ Failed to send failure email (HTTP $http_status)"
+            echo "::error::Both cleanup AND email notification failed!"
+          fi
+
+      - name: 📊 Final Status Log
         if: always()
         run: |
-          echo "🏁 Cleanup job terminato"
-          echo "⏰ Completato alle: $(date)"
+          echo ""
+          echo "🏁 === CLEANUP JOB SUMMARY ==="
+          echo "🕐 Completed at: $(date)"
+          echo "📊 HTTP Status: ${{ steps.cleanup_call.outputs.HTTP_STATUS || 'N/A' }}"
+          echo "✅ Success: ${{ steps.cleanup_call.outputs.SUCCESS || 'false' }}"
+          echo "📧 Email: Sent to admin"
+          echo "🔄 Next run: Tomorrow at 08:00 UTC"
+          echo "================================"
