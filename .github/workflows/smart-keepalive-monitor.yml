@@ -33,7 +33,7 @@ jobs:
             response=$(curl -s -w "\nTIME:%{time_total}s\nSTATUS:%{http_code}" \
               --max-time 30 \
               --user-agent "Karaokati-KeepAlive-Monitor/1.0" \
-              "$APP_URL/health" 2>/dev/null)
+              "$APP_URL" 2>/dev/null)
             
             curl_exit_code=$?
             
