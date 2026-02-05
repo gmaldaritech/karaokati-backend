@@ -1,0 +1,215 @@
+name: 🛡️ Keep Alive + Health Monitor
+
+on:
+  schedule:
+    # Ogni 30 minuti - ottimo equilibrio tra prevenzione e monitoring
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  smart-keepalive:
+    runs-on: ubuntu-latest
+    name: Keep Alive Intelligente
+    
+    steps:
+      - name: 🏓 Keep Alive con Detection
+        id: keepalive_check
+        run: |
+          echo "🏓 Keep Alive check (ogni 30min)"
+          echo "📍 Scopo: Prevenire sleep + Rilevare downtime"
+          
+          APP_URL="${{ secrets.HEALTH_CHECK_URL }}"
+          SUCCESS=false
+          FINAL_STATUS=""
+          FINAL_TIME=""
+          ERROR_DETAILS=""
+          
+          # 3 tentativi con delay crescente
+          for attempt in 1 2 3; do
+            echo ""
+            echo "🔄 Tentativo $attempt/3"
+            
+            # Keep alive ping con dettagli
+            response=$(curl -s -w "\nTIME:%{time_total}s\nSTATUS:%{http_code}" \
+              --max-time 30 \
+              --user-agent "Karaokati-KeepAlive-Monitor/1.0" \
+              "$APP_URL/health" 2>/dev/null)
+            
+            curl_exit_code=$?
+            
+            if [[ $curl_exit_code -eq 0 ]]; then
+              # Parse response
+              status_code=$(echo "$response" | grep -o "STATUS:[0-9]*" | cut -d: -f2)
+              time_taken=$(echo "$response" | grep -o "TIME:[0-9.]*" | cut -d: -f2)
+              body=$(echo "$response" | sed '/TIME:/d; /STATUS:/d')
+              
+              FINAL_STATUS="$status_code"
+              FINAL_TIME="$time_taken"
+              
+              echo "📊 Status: $status_code"
+              echo "⏱️  Time: ${time_taken}s"
+              
+              if [[ "$status_code" == "200" ]]; then
+                # Success - check if app was sleeping (>5s = cold start)
+                time_ms=$(echo "$time_taken" | awk '{print int($1 * 1000)}')
+                if [ "$time_ms" -gt 5000 ]; then
+                  echo "😴 Cold start detected (${time_taken}s) - app was sleeping!"
+                  echo "✅ Keep alive successful - app awakened"
+                else
+                  echo "✅ Keep alive successful - app was already warm"
+                fi
+                
+                SUCCESS=true
+                break
+              else
+                echo "❌ HTTP Error: $status_code"
+                ERROR_DETAILS="HTTP $status_code"
+              fi
+            else
+              echo "🚫 Connection failed (timeout/network error)"
+              ERROR_DETAILS="Connection timeout/network error"
+              FINAL_STATUS="TIMEOUT"
+            fi
+            
+            # Delay progressivo tra retry (30s, 60s)
+            if [[ $attempt -lt 3 ]]; then
+              delay=$((30 * attempt))
+              echo "⏳ Waiting ${delay}s before retry..."
+              sleep $delay
+            fi
+          done
+          
+          # Export results per step successivi
+          echo "SUCCESS=$SUCCESS" >> $GITHUB_OUTPUT
+          echo "STATUS_CODE=$FINAL_STATUS" >> $GITHUB_OUTPUT
+          echo "RESPONSE_TIME=$FINAL_TIME" >> $GITHUB_OUTPUT
+          echo "ERROR_DETAILS=$ERROR_DETAILS" >> $GITHUB_OUTPUT
+          echo "TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+          
+          if [[ "$SUCCESS" == "true" ]]; then
+            echo ""
+            echo "🎯 KEEP ALIVE SUCCESS!"
+            echo "   • Sleep prevention: ✅"
+            echo "   • App health: ✅" 
+            echo "   • Next check: 30 minutes"
+          else
+            echo ""
+            echo "🚨 KEEP ALIVE FAILED!"
+            echo "   • App appears down: ❌"
+            echo "   • Alert will be sent: 📧"
+          fi
+
+      - name: 📧 Send Email Alert con Resend
+        if: steps.keepalive_check.outputs.SUCCESS == 'false'
+        run: |
+          echo "📧 Sending alert email via Resend API..."
+          
+          # Prepare email content
+          EMAIL_SUBJECT="🚨 KARAOKATI DOWN - Keep Alive Failed (${{ steps.keepalive_check.outputs.TIMESTAMP }})"
+          EMAIL_HTML='<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 24px;">🚨 Karaokati App Down Alert</h1>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;">
+              <h2 style="color: #dc3545; margin-top: 0;">⚠️ Keep Alive Check Failed</h2>
+              
+              <div style="background: white; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #495057;">🔍 Failure Details:</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold; width: 40%;">App URL:</td>
+                    <td style="padding: 8px 0;">https://api.karaokati.com</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold;">Check Time:</td>
+                    <td style="padding: 8px 0;">${{ steps.keepalive_check.outputs.TIMESTAMP }}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold;">Status:</td>
+                    <td style="padding: 8px 0; color: #dc3545;">${{ steps.keepalive_check.outputs.STATUS_CODE || 'UNKNOWN' }}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold;">Response Time:</td>
+                    <td style="padding: 8px 0;">${{ steps.keepalive_check.outputs.RESPONSE_TIME || 'N/A' }}s</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold;">Error:</td>
+                    <td style="padding: 8px 0; color: #dc3545;">${{ steps.keepalive_check.outputs.ERROR_DETAILS }}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Retries:</td>
+                    <td style="padding: 8px 0;">3 attempts failed</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #856404;">🔧 Immediate Actions Required:</h3>
+                <ol style="margin: 0; padding-left: 20px; color: #856404;">
+                  <li>Check <strong>Railway Dashboard</strong> for service status</li>
+                  <li>Review <strong>deployment logs</strong> for errors</li>
+                  <li>Verify <strong>database connectivity</strong></li>
+                  <li>Consider <strong>manual redeploy</strong> if needed</li>
+                  <li>Check for <strong>resource limits</strong> reached</li>
+                </ol>
+              </div>
+              
+              <div style="background: #d1ecf1; border: 1px solid #b8daff; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #0c5460;">🔗 Quick Access Links:</h3>
+                <ul style="margin: 0; padding-left: 20px; color: #0c5460;">
+                  <li><a href="https://api.karaokati.com/health" style="color: #0c5460;">Direct Health Check</a></li>
+                  <li><a href="https://railway.app" style="color: #0c5460;">Railway Dashboard</a></li>
+                  <li><a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" style="color: #0c5460;">Workflow Logs</a></li>
+                  <li><a href="https://github.com/${{ github.repository }}/actions" style="color: #0c5460;">All GitHub Actions</a></li>
+                </ul>
+              </div>
+              
+              <div style="background: #e2e3e5; padding: 10px; border-radius: 5px; margin: 15px 0 0 0; font-size: 12px; color: #6c757d;">
+                <strong>Monitoring Info:</strong><br>
+                • Frequency: Every 30 minutes<br>
+                • Purpose: Sleep prevention + Health monitoring<br>
+                • Repository: ${{ github.repository }}<br>
+                • Workflow: ${{ github.workflow }}<br>
+                • Run ID: ${{ github.run_id }}
+              </div>
+            </div>
+          </div>'
+          
+          # Send email via Resend API
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -X POST "https://api.resend.com/emails" \
+            -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"from\": \"Karaokati Alert <alerts@karaokati.com>\",
+              \"to\": [\"${{ secrets.ALERT_EMAIL }}\"],
+              \"subject\": \"$EMAIL_SUBJECT\",
+              \"html\": $(echo "$EMAIL_HTML" | jq -Rs .)
+            }")
+          
+          # Check if email sent successfully
+          http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
+          response_body=$(echo "$response" | sed '/HTTP_STATUS:/d')
+          
+          if [[ "$http_status" == "200" ]]; then
+            echo "✅ Alert email sent successfully via Resend"
+            echo "📧 Email ID: $(echo "$response_body" | jq -r '.id // "unknown"')"
+          else
+            echo "❌ Failed to send email via Resend (HTTP $http_status)"
+            echo "📝 Response: $response_body"
+            echo "::error::Email alert failed - check RESEND_API_KEY secret"
+          fi
+
+      - name: ✅ Success Log  
+        if: steps.keepalive_check.outputs.SUCCESS == 'true'
+        run: |
+          echo "✅ KEEP ALIVE SUCCESS - No alerts needed"
+          echo "🎯 Benefits achieved:"
+          echo "   • Sleep prevention: App stayed awake"
+          echo "   • Health confirmed: App responding normally"
+          echo "   • Response time: ${{ steps.keepalive_check.outputs.RESPONSE_TIME }}s"
+          echo "🕐 Next keep alive: in 30 minutes"
+          
+          # Log per tracking
+          echo "::notice::Keep Alive Success - App healthy (${{ steps.keepalive_check.outputs.RESPONSE_TIME }}s response)"
