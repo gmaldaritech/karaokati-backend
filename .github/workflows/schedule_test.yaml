@@ -1,4 +1,5 @@
 on:
+  workflow_dispatch:
   schedule:
     # Esegue ogni giorno alle 8 UTC
     - cron: "*/2 * * * *"
