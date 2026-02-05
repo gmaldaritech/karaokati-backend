@@ -2,9 +2,6 @@ on:
   schedule:
     # Esegue ogni giorno alle 8 UTC
     - cron: "*/2 * * * *"
-  
-  # Permetti esecuzione manuale dal tab Actions
-  workflow_dispatch:
 
 jobs:
   scheduling:
