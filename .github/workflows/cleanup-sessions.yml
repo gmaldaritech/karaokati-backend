@@ -2,10 +2,7 @@ name: 🧹 Cleanup Sessioni Scadute
 
 on:
   schedule:
-    # Esegue ogni giorno alle 8 UTC
     - cron: '0 8 * * *'
-  
-  # Permetti esecuzione manuale dal tab Actions
   workflow_dispatch:
 
 jobs:
@@ -23,31 +20,26 @@ jobs:
       - name: 🔄 Chiama endpoint cleanup
         id: cleanup_call
         run: |
-          # Endpoint cleanup
           CLEANUP_URL="https://api.karaokati.com/api/v1/sessions/cleanup"
           
           echo "📡 Chiamando: $CLEANUP_URL"
           
-          # Chiamata con retry e timeout
           response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             --max-time 30 \
             --retry 3 \
             --retry-delay 5 \
             -X GET "$CLEANUP_URL")
           
-          # Estrai status code
           http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
           body=$(echo "$response" | sed '/HTTP_STATUS:/d')
           
           echo "📊 Status: $http_status"
           echo "📝 Response: $body"
           
-          # Salva output per gli step successivi
           echo "HTTP_STATUS=$http_status" >> $GITHUB_OUTPUT
           echo "RESPONSE_BODY=$body" >> $GITHUB_OUTPUT
-          echo "TIMESTAMP=$(date '+%d/%m/%Y alle %H:%M UTC')" >> $GITHUB_OUTPUT
+          echo "TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
           
-          # Verifica successo
           if [ "$http_status" -eq 200 ]; then
             echo "✅ Cleanup completato con successo!"
             echo "::notice::Sessioni pulite: $body"
@@ -64,16 +56,66 @@ jobs:
         run: |
           echo "📧 Sending cleanup success notification..."
           
+          EMAIL_SUBJECT="✅ KARAOKATI - Cleanup Sessioni Completato (${{ steps.cleanup_call.outputs.TIMESTAMP }})"
+          EMAIL_HTML='<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #28a745; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 24px;">✅ Cleanup Sessioni Completato</h1>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;">
+              <h2 style="color: #28a745; margin-top: 0;">🎯 Operazione Completata</h2>
+              
+              <div style="background: white; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #495057;">📊 Dettagli:</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold; width: 40%;">Endpoint:</td>
+                    <td style="padding: 8px 0;">https://api.karaokati.com/api/v1/sessions/cleanup</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold;">Check Time:</td>
+                    <td style="padding: 8px 0;">${{ steps.cleanup_call.outputs.TIMESTAMP }}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold;">Status HTTP:</td>
+                    <td style="padding: 8px 0; color: #28a745;">${{ steps.cleanup_call.outputs.HTTP_STATUS }}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold;">Risultato:</td>
+                    <td style="padding: 8px 0;">${{ steps.cleanup_call.outputs.RESPONSE_BODY }}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Prossimo cleanup:</td>
+                    <td style="padding: 8px 0;">Domani alle 08:00 UTC</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745;">
+                <p style="margin: 0; color: #155724;">✅ <strong>Sistema funzionante:</strong> Cleanup automatico eseguito correttamente</p>
+              </div>
+              
+              <div style="background: #e2e3e5; padding: 10px; border-radius: 5px; margin: 15px 0 0 0; font-size: 12px; color: #6c757d;">
+                <strong>Monitoring Info:</strong><br>
+                • Frequency: Daily at 08:00 UTC<br>
+                • Purpose: Remove expired sessions<br>
+                • Repository: ${{ github.repository }}<br>
+                • Workflow: ${{ github.workflow }}<br>
+                • Run ID: ${{ github.run_id }}
+              </div>
+            </div>
+          </div>'
+          
           response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             -X POST "https://api.resend.com/emails" \
             -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "from": "Karaokati Maintenance <maintenance@karaokati.com>",
-              "to": ["${{ secrets.ADMIN_EMAIL }}"],
-              "subject": "✅ KARAOKATI - Cleanup Sessioni Completato (${{ steps.cleanup_call.outputs.TIMESTAMP }})",
-              "html": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\"><div style=\"background: #28a745; color: white; padding: 20px; border-radius: 8px 8px 0 0;\"><h1 style=\"margin: 0; font-size: 24px;\">✅ Cleanup Sessioni Completato</h1></div><div style=\"background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;\"><h2 style=\"color: #28a745; margin-top: 0;\">🎯 Operazione Completata</h2><div style=\"background: white; padding: 15px; border-radius: 5px; margin: 15px 0;\"><h3 style=\"margin-top: 0; color: #495057;\">📊 Dettagli:</h3><table style=\"width: 100%; border-collapse: collapse;\"><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold; width: 40%;\">🕐 Timestamp:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.TIMESTAMP }}</td></tr><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold;\">📊 Status HTTP:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.HTTP_STATUS }}</td></tr><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold;\">📝 Risultato:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.RESPONSE_BODY }}</td></tr><tr><td style=\"padding: 8px 0; font-weight: bold;\">🔄 Prossimo cleanup:</td><td style=\"padding: 8px 0;\">Domani alle 08:00 UTC</td></tr></table></div><div style=\"background: #e8f5e8; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745;\"><p style=\"margin: 0; color: #155724;\">✅ <strong>Sistema funzionante:</strong> Cleanup automatico eseguito correttamente</p></div></div></div>"
-            }')
+            -d "{
+              \"from\": \"Karaokati Maintenance <maintenance@karaokati.com>\",
+              \"to\": \"${{ secrets.ADMIN_EMAIL }}\",
+              \"subject\": \"$EMAIL_SUBJECT\",
+              \"html\": $(echo "$EMAIL_HTML" | jq -Rs .)
+            }")
           
           http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
           
@@ -90,16 +132,83 @@ jobs:
         run: |
           echo "📧 Sending cleanup failure alert..."
           
+          EMAIL_SUBJECT="🚨 KARAOKATI CLEANUP FAILED - Sessioni (${{ steps.cleanup_call.outputs.TIMESTAMP }})"
+          EMAIL_HTML='<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 24px;">🚨 Cleanup Sessioni Fallito</h1>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;">
+              <h2 style="color: #dc3545; margin-top: 0;">❌ Errore nel Cleanup</h2>
+              
+              <div style="background: white; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #495057;">🔍 Dettagli Errore:</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold; width: 40%;">Endpoint:</td>
+                    <td style="padding: 8px 0;">https://api.karaokati.com/api/v1/sessions/cleanup</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold;">Check Time:</td>
+                    <td style="padding: 8px 0;">${{ steps.cleanup_call.outputs.TIMESTAMP || 'N/A' }}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold;">Status:</td>
+                    <td style="padding: 8px 0; color: #dc3545;">${{ steps.cleanup_call.outputs.HTTP_STATUS || 'UNKNOWN' }}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold;">Errore:</td>
+                    <td style="padding: 8px 0; color: #dc3545;">${{ steps.cleanup_call.outputs.RESPONSE_BODY || 'Timeout o errore di connessione' }}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Retries:</td>
+                    <td style="padding: 8px 0;">3 attempts failed</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #856404;">🔧 Immediate Actions Required:</h3>
+                <ol style="margin: 0; padding-left: 20px; color: #856404;">
+                  <li>Check <strong>Railway Dashboard</strong> for service status</li>
+                  <li>Review <strong>deployment logs</strong> for errors</li>
+                  <li>Verify <strong>database connectivity</strong></li>
+                  <li>Consider <strong>manual redeploy</strong> if needed</li>
+                  <li>Execute <strong>manual cleanup</strong> if necessary</li>
+                </ol>
+              </div>
+              
+              <div style="background: #d1ecf1; border: 1px solid #b8daff; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #0c5460;">🔗 Quick Access Links:</h3>
+                <ul style="margin: 0; padding-left: 20px; color: #0c5460;">
+                  <li><a href="https://api.karaokati.com/api/v1/sessions/cleanup style="color: #0c5460;">Try it Out the API</a></li>
+                  <li><a href="https://railway.app" style="color: #0c5460;">Railway Dashboard</a></li>
+                  <li><a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" style="color: #0c5460;">Workflow Logs</a></li>
+                  <li><a href="https://github.com/${{ github.repository }}/actions" style="color: #0c5460;">All GitHub Actions</a></li>
+                </ul>
+              </div>
+              
+              <div style="background: #e2e3e5; padding: 10px; border-radius: 5px; margin: 15px 0 0 0; font-size: 12px; color: #6c757d;">
+                <strong>Monitoring Info:</strong><br>
+                • Frequency: Daily at 08:00 UTC<br>
+                • Purpose: Remove expired sessions<br>
+                • Repository: ${{ github.repository }}<br>
+                • Workflow: ${{ github.workflow }}<br>
+                • Run ID: ${{ github.run_id }}
+              </div>
+            </div>
+          </div>'
+          
           response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             -X POST "https://api.resend.com/emails" \
             -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "from": "Karaokati Alerts <alerts@karaokati.com>",
-              "to": ["${{ secrets.ADMIN_EMAIL }}"],
-              "subject": "🚨 KARAOKATI CLEANUP FAILED - Sessioni (${{ steps.cleanup_call.outputs.TIMESTAMP }})",
-              "html": "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\"><div style=\"background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0;\"><h1 style=\"margin: 0; font-size: 24px;\">🚨 Cleanup Sessioni Fallito</h1></div><div style=\"background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;\"><h2 style=\"color: #dc3545; margin-top: 0;\">❌ Errore nel Cleanup</h2><div style=\"background: white; padding: 15px; border-radius: 5px; margin: 15px 0;\"><h3 style=\"margin-top: 0; color: #495057;\">🔍 Dettagli Errore:</h3><table style=\"width: 100%; border-collapse: collapse;\"><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold; width: 40%;\">🕐 Timestamp:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.TIMESTAMP || ''}} $(date)</td></tr><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold;\">📊 Status HTTP:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.HTTP_STATUS || 'N/A' }}</td></tr><tr style=\"border-bottom: 1px solid #dee2e6;\"><td style=\"padding: 8px 0; font-weight: bold;\">❌ Errore:</td><td style=\"padding: 8px 0;\">${{ steps.cleanup_call.outputs.RESPONSE_BODY || 'Timeout o errore di connessione' }}</td></tr><tr><td style=\"padding: 8px 0; font-weight: bold;\">🔧 Endpoint:</td><td style=\"padding: 8px 0;\">https://api.karaokati.com/api/v1/sessions/cleanup</td></tr></table></div><div style=\"background: #f8d7da; padding: 15px; border-radius: 5px; border-left: 4px solid #dc3545;\"><p style=\"margin: 0; color: #721c24;\">⚠️ <strong>Azione Richiesta:</strong> Verificare lo stato del server e controllare i log applicativi</p></div><div style=\"margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;\"><p style=\"margin: 0; color: #856404;\">💡 <strong>Prossimi Passi:</strong><br>1. Verificare connessione server<br>2. Controllare logs applicazione<br>3. Eseguire cleanup manuale se necessario</p></div></div></div>"
-            }')
+            -d "{
+              \"from\": \"Karaokati Alerts <alerts@karaokati.com>\",
+              \"to\": \"${{ secrets.ADMIN_EMAIL }}\",
+              \"subject\": \"$EMAIL_SUBJECT\",
+              \"html\": $(echo "$EMAIL_HTML" | jq -Rs .)
+            }")
           
           http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
           

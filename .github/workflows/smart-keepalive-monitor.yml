@@ -104,7 +104,6 @@ jobs:
         run: |
           echo "📧 Sending alert email via Resend API..."
           
-          # Prepare email content
           EMAIL_SUBJECT="🚨 KARAOKATI DOWN - Keep Alive Failed (${{ steps.keepalive_check.outputs.TIMESTAMP }})"
           EMAIL_HTML='<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
@@ -176,19 +175,17 @@ jobs:
             </div>
           </div>'
           
-          # Send email via Resend API
           response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             -X POST "https://api.resend.com/emails" \
             -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d "{
               \"from\": \"Karaokati Alert <alerts@karaokati.com>\",
-              \"to\": [\"${{ secrets.ADMIN_EMAIL }}\"],
+              \"to\": \"${{ secrets.ADMIN_EMAIL }}\",
               \"subject\": \"$EMAIL_SUBJECT\",
               \"html\": $(echo "$EMAIL_HTML" | jq -Rs .)
             }")
           
-          # Check if email sent successfully
           http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
           response_body=$(echo "$response" | sed '/HTTP_STATUS:/d')
           
@@ -211,5 +208,4 @@ jobs:
           echo "   • Response time: ${{ steps.keepalive_check.outputs.RESPONSE_TIME }}s"
           echo "🕐 Next keep alive: in 30 minutes"
           
-          # Log per tracking
           echo "::notice::Keep Alive Success - App healthy (${{ steps.keepalive_check.outputs.RESPONSE_TIME }}s response)"
