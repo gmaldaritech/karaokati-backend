@@ -116,6 +116,13 @@ def verification_email_template(verification_url: str, terms_url: str) -> tuple[
             </p>
             <!-- Logo circolare sotto la firma -->
             <img src="https://www.karaokati.com/logo_circle_email.png" alt="Karaokati Logo" style="width: 50px; height: 50px; display: block; margin: 0 auto;" />
+            <p style="color: #6b7280; font-size: 12px; margin: 12px 0 15px 0;">
+                Seguici sui social
+            </p>
+
+            <a href="https://www.facebook.com/profile.php?id=61588581801421" style="display: inline-block;">
+                <img src="https://img.icons8.com/ios11/50/9ca3af/facebook-new.png" alt="Facebook" width="24" height="24" style="display: block; margin: 0 auto;" />
+            </a>
         </div>
     </td>
     </tr>
@@ -245,6 +252,13 @@ def reset_password_email_template(reset_url: str, terms_url: str) -> tuple[str, 
             </p>
             <!-- Logo circolare sotto la firma -->
             <img src="https://www.karaokati.com/logo_circle_email.png" alt="Karaokati Logo" style="width: 50px; height: 50px; display: block; margin: 0 auto;" />
+            <p style="color: #6b7280; font-size: 12px; margin: 12px 0 15px 0;">
+                Seguici sui social
+            </p>
+
+            <a href="https://www.facebook.com/profile.php?id=61588581801421" style="display: inline-block;">
+                <img src="https://img.icons8.com/ios11/50/9ca3af/facebook-new.png" alt="Facebook" width="24" height="24" style="display: block; margin: 0 auto;" />
+            </a>
         </div>
     </td>
     </tr>
@@ -363,6 +377,13 @@ def account_deletion_email_template(stage_name: str, full_name: str, terms_url: 
             </p>
             <!-- Logo circolare sotto la firma -->
             <img src="https://www.karaokati.com/logo_circle_email.png" alt="Karaokati Logo" style="width: 50px; height: 50px; display: block; margin: 0 auto;" />
+            <p style="color: #6b7280; font-size: 12px; margin: 12px 0 15px 0;">
+                Seguici sui social
+            </p>
+
+            <a href="https://www.facebook.com/profile.php?id=61588581801421" style="display: inline-block;">
+                <img src="https://img.icons8.com/ios11/50/9ca3af/facebook-new.png" alt="Facebook" width="24" height="24" style="display: block; margin: 0 auto;" />
+            </a>
         </div>
     </td>
     </tr>

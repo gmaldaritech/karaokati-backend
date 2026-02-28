@@ -7,6 +7,8 @@ from app.models.dj import DJ
 from app.schemas.venue import VenueCreate, VenueUpdate, VenueResponse
 from app.api.deps import get_current_dj
 
+from sqlalchemy.orm.attributes import flag_modified
+
 router = APIRouter()
 
 @router.get("", response_model=List[VenueResponse])
@@ -52,7 +54,6 @@ def update_venue(
     current_dj: DJ = Depends(get_current_dj),
     db: Session = Depends(get_db)
 ):
-    """Aggiorna un locale"""
     venue = db.query(Venue).filter(
         Venue.id == venue_id,
         Venue.dj_id == current_dj.id
@@ -67,8 +68,9 @@ def update_venue(
         venue.address = venue_data.address
     if venue_data.capacity is not None:
         venue.capacity = venue_data.capacity
-    if venue_data.notes is not None:
-        venue.notes = venue_data.notes
+
+    venue.notes = venue_data.notes if venue_data.notes else None
+    flag_modified(venue, "notes")  # ← forza SQLAlchemy a tracciare il cambio
     
     db.commit()
     db.refresh(venue)
