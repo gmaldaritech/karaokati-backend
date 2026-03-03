@@ -8,6 +8,8 @@ from app.core.email_service import generate_verification_token, send_verificatio
 from app.api.deps import get_current_dj
 from datetime import datetime, timedelta
 
+from sqlalchemy.orm.attributes import flag_modified
+
 router = APIRouter()
 
 @router.post("/register", response_model=dict, status_code=status.HTTP_201_CREATED)
@@ -237,59 +239,108 @@ def get_current_dj_info(current_dj: DJ = Depends(get_current_dj)):
         max_bookings_per_user=current_dj.max_bookings_per_user
     )
 
+# @router.put("/me", response_model=DJResponse)
+# def update_current_dj(
+#     dj_update: DJUpdate,
+#     current_dj: DJ = Depends(get_current_dj),
+#     db: Session = Depends(get_db)
+# ):
+#     """
+#     Aggiorna informazioni del DJ corrente.
+    
+#     Args:
+#         dj_update: Dati da aggiornare (solo campi forniti)
+#         current_dj: DJ autenticato
+#         db: Database session
+        
+#     Returns:
+#         DJResponse: Dati aggiornati del DJ
+        
+#     Raises:
+#         HTTPException: 400 se email già esistente
+        
+#     Note:
+#         - Email deve rimanere univoca
+#         - QR code ID non modificabile
+#         - Password richiede endpoint separato
+#     """
+#     # Verifica email univoca se fornita
+#     if dj_update.email and dj_update.email != current_dj.email:
+#         existing_dj = db.query(DJ).filter(
+#             DJ.email == dj_update.email,
+#             DJ.id != current_dj.id
+#         ).first()
+        
+#         if existing_dj:
+#             raise HTTPException(
+#                 status_code=400,
+#                 detail="Email già utilizzata da altro DJ"
+#             )
+    
+#     # Aggiorna solo campi forniti
+#     if dj_update.full_name is not None:
+#         current_dj.full_name = dj_update.full_name
+#     if dj_update.stage_name is not None:
+#         current_dj.stage_name = dj_update.stage_name
+#     if dj_update.email is not None:
+#         current_dj.email = dj_update.email
+#     if dj_update.phone is not None:
+#         current_dj.phone = dj_update.phone
+#     if dj_update.max_bookings_per_user is not None:
+#         current_dj.max_bookings_per_user = dj_update.max_bookings_per_user
+    
+#     db.commit()
+#     db.refresh(current_dj)
+    
+#     return DJResponse(
+#         id=current_dj.id,
+#         full_name=current_dj.full_name,
+#         stage_name=current_dj.stage_name,
+#         email=current_dj.email,
+#         phone=current_dj.phone,
+#         qr_code_id=current_dj.qr_code_id,
+#         email_verified=current_dj.email_verified,
+#         max_bookings_per_user=current_dj.max_bookings_per_user
+#     )
+
 @router.put("/me", response_model=DJResponse)
 def update_current_dj(
     dj_update: DJUpdate,
     current_dj: DJ = Depends(get_current_dj),
     db: Session = Depends(get_db)
 ):
-    """
-    Aggiorna informazioni del DJ corrente.
-    
-    Args:
-        dj_update: Dati da aggiornare (solo campi forniti)
-        current_dj: DJ autenticato
-        db: Database session
-        
-    Returns:
-        DJResponse: Dati aggiornati del DJ
-        
-    Raises:
-        HTTPException: 400 se email già esistente
-        
-    Note:
-        - Email deve rimanere univoca
-        - QR code ID non modificabile
-        - Password richiede endpoint separato
-    """
     # Verifica email univoca se fornita
     if dj_update.email and dj_update.email != current_dj.email:
         existing_dj = db.query(DJ).filter(
             DJ.email == dj_update.email,
             DJ.id != current_dj.id
         ).first()
-        
+
         if existing_dj:
             raise HTTPException(
                 status_code=400,
                 detail="Email già utilizzata da altro DJ"
             )
-    
-    # Aggiorna solo campi forniti
+
+    # Aggiorna campi standard (come già facevi)
     if dj_update.full_name is not None:
         current_dj.full_name = dj_update.full_name
+
     if dj_update.stage_name is not None:
         current_dj.stage_name = dj_update.stage_name
+
     if dj_update.email is not None:
         current_dj.email = dj_update.email
-    if dj_update.phone is not None:
-        current_dj.phone = dj_update.phone
+
     if dj_update.max_bookings_per_user is not None:
         current_dj.max_bookings_per_user = dj_update.max_bookings_per_user
-    
+
+    current_dj.phone = dj_update.phone.strip() if (dj_update.phone and dj_update.phone.strip()) else None
+    flag_modified(current_dj, "phone")
+
     db.commit()
     db.refresh(current_dj)
-    
+
     return DJResponse(
         id=current_dj.id,
         full_name=current_dj.full_name,
@@ -361,41 +412,6 @@ def resend_verification(
         "resent": email_sent,
         "message": "Email reinviata con successo"
     }
-
-# @router.delete("/delete-account")
-# def delete_account(
-#     current_dj: DJ = Depends(get_current_dj),
-#     db: Session = Depends(get_db)
-# ):
-#     """
-#     Elimina definitivamente l'account del DJ corrente.
-    
-#     Args:
-#         current_dj: DJ autenticato
-#         db: Database session
-        
-#     Returns:
-#         dict: Messaggio di conferma eliminazione
-        
-#     Note:
-#         - Eliminazione a cascata di venue, songs, bookings, sessions
-#         - IRREVERSIBILE: tutti i dati vengono persi
-#         - Richiede solo autenticazione JWT
-#     """
-#     # Salva dati per response
-#     dj_id = current_dj.id
-#     stage_name = current_dj.stage_name
-    
-#     # Elimina DJ (cascade eliminerà tutto il resto)
-#     db.delete(current_dj)
-#     db.commit()
-    
-#     return {
-#         "message": "Account eliminato definitivamente",
-#         "deleted_dj_id": dj_id,
-#         "stage_name": stage_name,
-#         "note": "Tutti i dati associati sono stati eliminati permanentemente"
-#     }
 
 @router.delete("/delete-account")
 def delete_account(
