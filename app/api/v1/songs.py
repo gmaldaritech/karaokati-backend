@@ -16,6 +16,11 @@ from fastapi.responses import StreamingResponse
 from io import BytesIO
 import pandas as pd
 
+import re
+from sqlalchemy import func, or_, and_, case, desc
+
+FUZZY_THRESHOLD = 0.40  # più alto = più rigido
+
 router = APIRouter()
 
 @router.get("", response_model=SongListResponse)
@@ -150,17 +155,18 @@ def get_public_catalog(
 ):
     """
     Ottieni il catalogo pubblico di un DJ (per bot assistant).
-    Richiede sessione valida.
-    
-    Questo endpoint permette agli utenti di cercare canzoni
-    nel catalogo del DJ per fare prenotazioni.
+
+    Ricerca per parole:
+    - parole di 4+ lettere: obbligatorie, devono essere contenute nel nome
+      del file oppure assomigliare molto a una sua parte (strict_word_similarity)
+    - parole di 1-3 lettere: solo bonus di ordinamento (obbligatorie solo se
+      la ricerca è composta esclusivamente da parole corte)
+    - risultati ordinati per rilevanza
     """
-    
+
     # 1. Valida sessione (opzionale ma consigliato per sicurezza)
     session_id_str = request.cookies.get("session_id") if request else None
 
-    print(session_id_str)
-    
     if session_id_str:
         try:
             session_id = uuid.UUID(session_id_str)
@@ -168,7 +174,7 @@ def get_public_catalog(
                 Session.id == session_id,
                 Session.expires_at > datetime.utcnow()
             ).first()
-            
+
             if not session:
                 raise HTTPException(
                     status_code=401,
@@ -176,20 +182,47 @@ def get_public_catalog(
                 )
         except ValueError:
             raise HTTPException(status_code=401, detail="Session ID non valido")
-    
+
     # 2. Trova DJ
     dj = db.query(DJ).filter(DJ.qr_code_id == qr_code_id).first()
     if not dj:
         raise HTTPException(status_code=404, detail="DJ non trovato")
-    
+
     # 3. Query canzoni
     query = db.query(Song).filter(Song.dj_id == dj.id)
-    
-    if search:
-        query = query.filter(Song.file_name.ilike(f"%{search}%"))
-    
+
+    if search and search.strip():
+        phrase = search.strip().lower()
+        tokens = [t for t in re.split(r"\s+", phrase) if t]
+        long_tokens = [t for t in tokens if len(t) >= 4]
+        short_tokens = [t for t in tokens if len(t) < 4]
+
+        conditions = []
+        score = 0
+
+        # Parole lunghe: obbligatorie (contenute oppure simili)
+        for t in long_tokens:
+            like = Song.file_name.ilike(f"%{t}%")
+            sim = func.strict_word_similarity(t, Song.file_name)
+            conditions.append(or_(like, sim >= FUZZY_THRESHOLD))
+            score = score + sim + case((like, 1.0), else_=0.0)
+
+        # Parole corte: bonus se ci sono parole lunghe, altrimenti filtro
+        for t in short_tokens:
+            like = Song.file_name.ilike(f"%{t}%")
+            if long_tokens:
+                score = score + case((like, 0.5), else_=0.0)
+            else:
+                conditions.append(like)
+                score = score + case((like, 1.0), else_=0.0)
+
+        # Bonus per somiglianza con la frase intera (aiuta a ordinare i pareggi)
+        score = score + func.word_similarity(phrase, Song.file_name)
+
+        query = query.filter(and_(*conditions)).order_by(desc(score), Song.file_name)
+
     songs = query.limit(limit).all()
-    
+
     # 4. Ritorna solo i nomi dei file (non gli ID)
     return {
         "songs": [song.file_name for song in songs],

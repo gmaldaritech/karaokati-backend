@@ -11,6 +11,8 @@ from app.models.venue import Venue
 from app.models.session import Session
 from app.schemas.session import SessionCreate, SessionResponse, SessionValidation
 
+from app.models.song import Song
+
 router = APIRouter()
 
 # Configurazione durata sessione
@@ -193,6 +195,10 @@ def validate_session(request: Request, db: DBSession = Depends(get_db)):
     
     dj = db.query(DJ).filter(DJ.id == session.dj_id).first()
     
+    # Richieste libere: sempre attive se il DJ non ha catalogo
+    has_songs = db.query(Song.id).filter(Song.dj_id == dj.id).first() is not None
+    free_requests_enabled = dj.allow_free_requests or not has_songs
+
     # Ritorna dati sessione valida
     return {
         "valid": True,
@@ -200,7 +206,8 @@ def validate_session(request: Request, db: DBSession = Depends(get_db)):
         "dj": {
             "id": dj.id, 
             "stage_name": dj.stage_name, 
-            "qr_code_id": dj.qr_code_id
+            "qr_code_id": dj.qr_code_id,
+            "allow_free_requests": free_requests_enabled
         },
         "active_venue": {
             "id": venue.id, 

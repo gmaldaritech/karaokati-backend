@@ -14,6 +14,7 @@ class DJ(Base):
     password_hash = Column(String(255), nullable=False)
     qr_code_id = Column(String(50), unique=True, nullable=False, index=True)
     max_bookings_per_user = Column(Integer, default=999, nullable=False)
+    allow_free_requests = Column(Boolean, nullable=False, default=True)
 
     email_verified = Column(Boolean, default=False, nullable=False)
     email_verification_token = Column(String(255), nullable=True)

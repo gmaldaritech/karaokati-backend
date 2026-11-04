@@ -7,6 +7,7 @@ from app.core.security import verify_password, get_password_hash, create_access_
 from app.core.email_service import generate_verification_token, send_verification_email, send_reset_password_email, send_admin_registration_notification, send_admin_password_reset_notification
 from app.api.deps import get_current_dj
 from datetime import datetime, timedelta
+from app.models.song import Song
 
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -64,7 +65,8 @@ def register(dj_data: DJRegister, request: Request, db: Session = Depends(get_db
             phone=new_dj.phone,
             qr_code_id=new_dj.qr_code_id,
             email_verified=new_dj.email_verified,
-            max_bookings_per_user=new_dj.max_bookings_per_user
+            max_bookings_per_user=new_dj.max_bookings_per_user,
+            allow_free_requests=new_dj.allow_free_requests
         ),
         "token": None,  # Non diamo token fino alla verifica
         "requires_verification": True
@@ -99,7 +101,8 @@ def login(credentials: DJLogin, db: Session = Depends(get_db)):
             phone=dj.phone,
             qr_code_id=dj.qr_code_id,
             email_verified=dj.email_verified,
-            max_bookings_per_user=dj.max_bookings_per_user
+            max_bookings_per_user=dj.max_bookings_per_user,
+            allow_free_requests=dj.allow_free_requests
         )
     }
 
@@ -156,7 +159,8 @@ def verify_email(token: str, db: Session = Depends(get_db)):
             phone=dj.phone,
             qr_code_id=dj.qr_code_id,
             email_verified=dj.email_verified,
-            max_bookings_per_user=dj.max_bookings_per_user
+            max_bookings_per_user=dj.max_bookings_per_user,
+            allow_free_requests=dj.allow_free_requests
         )
     }
 
@@ -236,7 +240,8 @@ def get_current_dj_info(current_dj: DJ = Depends(get_current_dj)):
         phone=current_dj.phone,
         qr_code_id=current_dj.qr_code_id,
         email_verified=current_dj.email_verified,
-        max_bookings_per_user=current_dj.max_bookings_per_user
+        max_bookings_per_user=current_dj.max_bookings_per_user,
+        allow_free_requests=current_dj.allow_free_requests
     )
 
 @router.put("/me", response_model=DJResponse)
@@ -271,6 +276,10 @@ def update_current_dj(
     if dj_update.max_bookings_per_user is not None:
         current_dj.max_bookings_per_user = dj_update.max_bookings_per_user
 
+    if dj_update.allow_free_requests is not None:
+        has_songs = db.query(Song.id).filter(Song.dj_id == current_dj.id).first() is not None
+        current_dj.allow_free_requests = dj_update.allow_free_requests if has_songs else True
+
     current_dj.phone = dj_update.phone.strip() if (dj_update.phone and dj_update.phone.strip()) else None
     flag_modified(current_dj, "phone")
 
@@ -285,7 +294,8 @@ def update_current_dj(
         phone=current_dj.phone,
         qr_code_id=current_dj.qr_code_id,
         email_verified=current_dj.email_verified,
-        max_bookings_per_user=current_dj.max_bookings_per_user
+        max_bookings_per_user=current_dj.max_bookings_per_user,
+        allow_free_requests=current_dj.allow_free_requests
     )
 
 @router.put("/change-password")

@@ -15,6 +15,8 @@ from app.api.deps import get_current_dj
 from app.core.config import settings
 from sqlalchemy import func
 
+from typing import List, Optional
+
 router = APIRouter()
 
 # ==================== DJ ENDPOINTS ====================
@@ -49,10 +51,12 @@ def get_bookings(
             user_name=b.user_name,
             song=b.song,
             key=b.key,
+            notes=b.notes,
             status=b.status,
             venue_name=venue.name,
             session_id=b.session_id,  # ✅ Incluso
-            created_at=b.created_at
+            created_at=b.created_at,
+            is_free_request=b.is_free_request
         )
         for b in bookings
     ]
@@ -79,9 +83,11 @@ def create_booking(
         user_name=booking_data.user_name,
         song=booking_data.song,
         key=booking_data.key,
+        notes=booking_data.notes,
         status="pending",
         venue_id=venue.id,
-        session_id=None  # ✅ NULL per prenotazioni DJ
+        session_id=None,  # ✅ NULL per prenotazioni DJ
+        is_free_request=booking_data.is_free_request
     )
     
     db.add(new_booking)
@@ -269,6 +275,8 @@ def create_user_booking(
     user_name: str,
     song: str,
     key: str = "0",
+    notes: Optional[str] = None,
+     is_free_request: bool = False,
     session: Session = Depends(get_current_session),
     db: DBSession = Depends(get_db)
 ):
@@ -299,24 +307,40 @@ def create_user_booking(
             detail="Il locale della tua sessione non è più attivo. Il DJ ha cambiato locale. Scansiona nuovamente il QR code."
         )
     
-    # 3. Verifica canzone nel catalogo
+    # 3. Verifica canzone nel catalogo (o richiesta libera)
     from app.models.song import Song
-    song_exists = db.query(Song).filter(
-        Song.dj_id == session.dj_id,
-        Song.file_name == song
-    ).first()
     
-    if not song_exists:
-        raise HTTPException(status_code=404, detail="Canzone non trovata nel catalogo")
+    if is_free_request:
+        # Richiesta libera: consentita solo se abilitata dal DJ o se il DJ non ha catalogo
+        has_songs = db.query(Song.id).filter(Song.dj_id == session.dj_id).first() is not None
+        if has_songs and dj and not dj.allow_free_requests:
+            raise HTTPException(
+                status_code=403,
+                detail="Il DJ non ha abilitato le richieste libere"
+            )
+
+        song = song.strip()[:200]
+        if not song:
+            raise HTTPException(status_code=400, detail="Inserisci il titolo della canzone")
+    else:
+        song_exists = db.query(Song).filter(
+            Song.dj_id == session.dj_id,
+            Song.file_name == song
+        ).first()
+
+        if not song_exists:
+            raise HTTPException(status_code=404, detail="Canzone non trovata nel catalogo")
     
     # 4. Crea prenotazione per il venue della sessione
     new_booking = Booking(
         user_name=user_name,
         song=song,
         key=key,
+        notes=(notes.strip()[:500] if notes and notes.strip() else None),
         status="pending",
         venue_id=session.venue_id,
-        session_id=session.id
+        session_id=session.id,
+        is_free_request=is_free_request
     )
     
     db.add(new_booking)
@@ -338,7 +362,8 @@ def create_user_booking(
         "created_at": new_booking.created_at,
         "message": "Prenotazione inviata! Il DJ la confermerà a breve.",
         "remaining_bookings": remaining_bookings,
-        "max_bookings": max_bookings
+        "max_bookings": max_bookings,
+        "is_free_request": new_booking.is_free_request
     }
 
 @router.get("/user/my-bookings")
