@@ -21,6 +21,7 @@ class DJResponse(BaseModel):
     qr_code_id: str
     email_verified: bool  # 🆕
     max_bookings_per_user: int
+    allow_free_requests: bool = True
     
     class Config:
         from_attributes = True
@@ -36,6 +37,7 @@ class DJUpdate(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     max_bookings_per_user: Optional[int] = Field(None, ge=1, le=999)
+    allow_free_requests: Optional[bool] = None
 
 class PasswordChange(BaseModel):
     """Schema per cambio password"""
