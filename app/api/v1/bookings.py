@@ -16,6 +16,10 @@ from app.core.config import settings
 from sqlalchemy import func
 
 from typing import List, Optional
+from io import BytesIO
+from zoneinfo import ZoneInfo
+import pandas as pd
+from fastapi.responses import StreamingResponse
 
 router = APIRouter()
 
@@ -95,6 +99,64 @@ def create_booking(
     db.refresh(new_booking)
     
     return new_booking
+
+@router.get("/export")
+def export_bookings(
+    venue_id: int = Query(..., description="ID del locale"),
+    current_dj: DJ = Depends(get_current_dj),
+    db: DBSession = Depends(get_db)
+):
+    """Scarica tutte le prenotazioni di un locale come Excel"""
+    venue = db.query(Venue).filter(
+        Venue.id == venue_id,
+        Venue.dj_id == current_dj.id
+    ).first()
+
+    if not venue:
+        raise HTTPException(status_code=404, detail="Locale non trovato")
+
+    bookings = db.query(Booking).filter(
+        Booking.venue_id == venue_id
+    ).order_by(Booking.id).all()
+
+    if not bookings:
+        raise HTTPException(status_code=404, detail="Nessuna prenotazione da scaricare")
+
+    status_labels = {"pending": "In attesa", "accepted": "Accettata", "rejected": "Rifiutata"}
+    rome = ZoneInfo("Europe/Rome")
+
+    def local_time(dt):
+        if not dt:
+            return ""
+        return dt.replace(tzinfo=ZoneInfo("UTC")).astimezone(rome).strftime("%d/%m/%Y %H:%M")
+
+    df = pd.DataFrame([
+        {
+            "Nome": b.user_name,
+            "Canzone": b.song,
+            "Tonalità": "Originale" if b.key == "0" else b.key,
+            "Note": b.notes or "",
+            "Stato": status_labels.get(b.status, b.status),
+            "Tipo richiesta": "Richiesta libera" if b.is_free_request else "Dal catalogo",
+            "Locale": venue.name,
+            "Data e ora": local_time(b.created_at),
+        }
+        for b in bookings
+    ])
+
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Prenotazioni")
+        ws = writer.sheets["Prenotazioni"]
+        for col, width in zip("ABCDEFGH", [20, 45, 12, 35, 12, 18, 20, 18]):
+            ws.column_dimensions[col].width = width
+    buffer.seek(0)
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=prenotazioni_karaokati.xlsx"}
+    )
 
 @router.post("/{booking_id}/accept")
 def accept_booking(

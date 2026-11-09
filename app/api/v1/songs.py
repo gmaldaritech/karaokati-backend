@@ -101,14 +101,30 @@ def bulk_add_songs(
     current_dj: DJ = Depends(get_current_dj),
     db: Session = Depends(get_db)
 ):
-    """Aggiungi multiple canzoni in una volta (importazione massiva)"""
-    songs = [Song(file_name=song, dj_id=current_dj.id) for song in bulk_data.songs]
-    db.bulk_save_objects(songs)
-    db.commit()
-    
+    """Aggiungi multiple canzoni in una volta (salta quelle già presenti)"""
+    existing = {
+        r[0] for r in db.query(Song.file_name).filter(Song.dj_id == current_dj.id).all()
+    }
+
+    to_add = []
+    seen = set()
+    for name in bulk_data.songs:
+        name = name.strip()
+        if not name or name in existing or name in seen:
+            continue
+        seen.add(name)
+        to_add.append(Song(file_name=name, dj_id=current_dj.id))
+
+    if to_add:
+        db.bulk_save_objects(to_add)
+        db.commit()
+
+    skipped = len(bulk_data.songs) - len(to_add)
+
     return {
-        "message": f"{len(bulk_data.songs)} canzoni aggiunte con successo",
-        "count": len(bulk_data.songs)
+        "message": f"{len(to_add)} canzoni aggiunte con successo",
+        "count": len(to_add),
+        "skipped": skipped
     }
 
 @router.delete("/{song_id}")
@@ -144,6 +160,31 @@ def clear_catalog(
         "message": "Catalogo eliminato con successo",
         "deleted": deleted_count
     }
+
+@router.get("/export")
+def export_catalog(
+    current_dj: DJ = Depends(get_current_dj),
+    db: Session = Depends(get_db)
+):
+    """Scarica l'intero catalogo del DJ come Excel (una colonna: 'Titolo Canzone')"""
+    rows = db.query(Song.file_name).filter(
+        Song.dj_id == current_dj.id
+    ).order_by(Song.file_name).all()
+
+    if not rows:
+        raise HTTPException(status_code=404, detail="Catalogo vuoto")
+
+    df = pd.DataFrame({"Titolo Canzone": [r[0] for r in rows]})
+
+    excel_buffer = BytesIO()
+    df.to_excel(excel_buffer, index=False, engine="openpyxl")
+    excel_buffer.seek(0)
+
+    return StreamingResponse(
+        excel_buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=catalogo_karaokati.xlsx"}
+    )
 
 @router.get("/public/{qr_code_id}")
 def get_public_catalog(
