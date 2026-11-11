@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, Literal
 
 class DJRegister(BaseModel):
     full_name: str
@@ -22,6 +22,7 @@ class DJResponse(BaseModel):
     email_verified: bool  # 🆕
     max_bookings_per_user: int
     allow_free_requests: bool = True
+    guide_status: str = "pending"
     
     class Config:
         from_attributes = True
@@ -38,6 +39,10 @@ class DJUpdate(BaseModel):
     phone: Optional[str] = None
     max_bookings_per_user: Optional[int] = Field(None, ge=1, le=999)
     allow_free_requests: Optional[bool] = None
+
+class GuideStatusUpdate(BaseModel):
+    """Esito della guida interattiva"""
+    status: Literal["dismissed", "completed"]
 
 class PasswordChange(BaseModel):
     """Schema per cambio password"""

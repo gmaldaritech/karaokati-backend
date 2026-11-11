@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.dj import DJ
-from app.schemas.dj import DJRegister, DJLogin, DJUpdate, PasswordChange, TokenResponse, DJResponse, PasswordResetRequest, PasswordReset 
+from app.schemas.dj import DJRegister, DJLogin, DJUpdate, PasswordChange, TokenResponse, DJResponse, PasswordResetRequest, PasswordReset, GuideStatusUpdate 
 from app.core.security import verify_password, get_password_hash, create_access_token, generate_qr_code_id
 from app.core.email_service import generate_verification_token, send_verification_email, send_reset_password_email, send_admin_registration_notification, send_admin_password_reset_notification
 from app.api.deps import get_current_dj
@@ -102,7 +102,8 @@ def login(credentials: DJLogin, db: Session = Depends(get_db)):
             qr_code_id=dj.qr_code_id,
             email_verified=dj.email_verified,
             max_bookings_per_user=dj.max_bookings_per_user,
-            allow_free_requests=dj.allow_free_requests
+            allow_free_requests=dj.allow_free_requests,
+            guide_status=dj.guide_status
         )
     }
 
@@ -160,7 +161,8 @@ def verify_email(token: str, db: Session = Depends(get_db)):
             qr_code_id=dj.qr_code_id,
             email_verified=dj.email_verified,
             max_bookings_per_user=dj.max_bookings_per_user,
-            allow_free_requests=dj.allow_free_requests
+            allow_free_requests=dj.allow_free_requests,
+            guide_status=dj.guide_status
         )
     }
 
@@ -241,7 +243,8 @@ def get_current_dj_info(current_dj: DJ = Depends(get_current_dj)):
         qr_code_id=current_dj.qr_code_id,
         email_verified=current_dj.email_verified,
         max_bookings_per_user=current_dj.max_bookings_per_user,
-        allow_free_requests=current_dj.allow_free_requests
+        allow_free_requests=current_dj.allow_free_requests,
+        guide_status=current_dj.guide_status
     )
 
 @router.put("/me", response_model=DJResponse)
@@ -295,8 +298,23 @@ def update_current_dj(
         qr_code_id=current_dj.qr_code_id,
         email_verified=current_dj.email_verified,
         max_bookings_per_user=current_dj.max_bookings_per_user,
-        allow_free_requests=current_dj.allow_free_requests
+        allow_free_requests=current_dj.allow_free_requests,
+        guide_status=current_dj.guide_status
     )
+
+@router.put("/me/guide-status")
+def update_guide_status(
+    data: GuideStatusUpdate,
+    current_dj: DJ = Depends(get_current_dj),
+    db: Session = Depends(get_db)
+):
+    """Salva l'esito della guida interattiva: dismissed | completed"""
+    # Una guida completata non viene mai declassata a "dismissed"
+    if not (current_dj.guide_status == "completed" and data.status == "dismissed"):
+        current_dj.guide_status = data.status
+        db.commit()
+
+    return {"guide_status": current_dj.guide_status}
 
 @router.put("/change-password")
 def change_password(
