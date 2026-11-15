@@ -9,7 +9,7 @@ class SuggestionRequest(BaseModel):
     content: str
 
 @router.post("/send-suggestion")
-async def send_suggestion(suggestion: SuggestionRequest):
+def send_suggestion(suggestion: SuggestionRequest):
     """Invia suggerimento via email"""
     
     try:

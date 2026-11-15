@@ -291,34 +291,3 @@ def get_public_catalog(
         "total": get_catalog_count(db, dj.id),
         "dj_name": dj.stage_name
     }
-
-@router.post("/generate-excel")
-async def generate_excel_from_song_list(
-    songs: dict,  # {"songs": ["song1.mp3", "song2.mp3", ...]}
-    current_dj: DJ = Depends(get_current_dj)
-):
-    """
-    Genera file Excel da lista di canzoni.
-    Usato per "Genera Catalogo Automatico".
-    """
-    song_list = songs.get("songs", [])
-    
-    if not song_list:
-        raise HTTPException(status_code=400, detail="Lista canzoni vuota")
-    
-    # Crea DataFrame
-    df = pd.DataFrame({'titolo': song_list})
-    
-    # Genera Excel in memoria
-    excel_buffer = BytesIO()
-    df.to_excel(excel_buffer, index=False, engine='openpyxl')
-    excel_buffer.seek(0)
-    
-    # Ritorna file per download
-    return StreamingResponse(
-        BytesIO(excel_buffer.read()),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f"attachment; filename=catalogo_{current_dj.stage_name}.xlsx"
-        }
-    )
