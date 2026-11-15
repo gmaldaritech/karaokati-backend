@@ -1,17 +1,53 @@
+import threading
+from datetime import datetime, date
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, Field
 from app.core.email_service import send_email
 
 router = APIRouter()
 
+MAX_SUGGESTION_LENGTH = 2000  # caratteri
+MAX_SUGGESTIONS_PER_DAY = 20  # in totale, per tutti gli utenti
+
+# Contatore giornaliero in memoria: si azzera a mezzanotte (ora italiana)
+# e a ogni riavvio del server. Con un solo worker vale per tutto il backend.
+_ROME = ZoneInfo("Europe/Rome")
+_daily_lock = threading.Lock()
+_daily_day: date | None = None
+_daily_count = 0
+
+
+def _take_daily_slot() -> bool:
+    """Riserva un invio per oggi. Ritorna False se il limite è già raggiunto."""
+    global _daily_day, _daily_count
+    today = datetime.now(_ROME).date()
+    with _daily_lock:
+        if _daily_day != today:
+            _daily_day = today
+            _daily_count = 0
+        if _daily_count >= MAX_SUGGESTIONS_PER_DAY:
+            return False
+        _daily_count += 1
+        return True
+
+
 class SuggestionRequest(BaseModel):
-    content: str
+    content: str = Field(..., min_length=1, max_length=MAX_SUGGESTION_LENGTH)
 
 @router.post("/send-suggestion")
 def send_suggestion(suggestion: SuggestionRequest):
     """Invia suggerimento via email"""
-    
+
+    # Fuori dal try: altrimenti l'except qui sotto trasformerebbe il 429 in 500
+    if not _take_daily_slot():
+        print(f"Limite giornaliero suggerimenti raggiunto ({MAX_SUGGESTIONS_PER_DAY})")
+        raise HTTPException(
+            status_code=429,
+            detail="Oggi abbiamo ricevuto molti suggerimenti. Riprova domani, grazie!"
+        )
+
     try:
         # Email a te stesso con il suggerimento
         email_subject = "Nuovo Suggerimento Karaokati"
