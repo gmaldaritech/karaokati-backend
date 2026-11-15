@@ -77,8 +77,8 @@ def qr_flow(qr_code_id: str, request: Request, db: DBSession = Depends(get_db)):
         ).first()
         
         if session:
-            session.last_activity = datetime.utcnow()
-            db.commit()
+            if session.touch():
+                db.commit()
             return {"action": "redirect", "session_id": str(session.id)}
     
     # 4. Nessuna sessione valida → Welcome
@@ -189,9 +189,9 @@ def validate_session(request: Request, db: DBSession = Depends(get_db)):
             detail="Il locale non è più attivo."
         )
     
-    # Aggiorna last_activity
-    session.last_activity = datetime.utcnow()
-    db.commit()
+    # Aggiorna last_activity (al massimo una scrittura ogni 5 minuti)
+    if session.touch():
+        db.commit()
     
     dj = db.query(DJ).filter(DJ.id == session.dj_id).first()
     

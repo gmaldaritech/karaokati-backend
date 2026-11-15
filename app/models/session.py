@@ -27,6 +27,18 @@ class Session(Base):
     def is_expired(self):
         return datetime.utcnow() > self.expires_at
     
+    def touch(self, min_interval: timedelta = timedelta(minutes=5)) -> bool:
+        """
+        Aggiorna last_activity solo se è più vecchio di min_interval.
+        Evita una scrittura sul DB a ogni richiesta del cliente.
+        Ritorna True se il valore è cambiato (serve un commit).
+        """
+        now = datetime.utcnow()
+        if self.last_activity is None or now - self.last_activity >= min_interval:
+            self.last_activity = now
+            return True
+        return False
+
     @property
     def remaining_minutes(self):
         if self.is_expired:

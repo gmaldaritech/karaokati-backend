@@ -326,9 +326,9 @@ def get_current_session(request: Request, db: DBSession = Depends(get_db)) -> Se
             detail="Sessione scaduta. Scansiona nuovamente il QR code."
         )
     
-    # Aggiorna last_activity
-    session.last_activity = datetime.utcnow()
-    db.commit()
+    # Aggiorna last_activity (al massimo una scrittura ogni 5 minuti)
+    if session.touch():
+        db.commit()
     
     return session
 

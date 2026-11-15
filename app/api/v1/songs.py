@@ -17,7 +17,9 @@ from io import BytesIO
 import pandas as pd
 
 import re
-from sqlalchemy import func, or_, and_, case, desc
+from sqlalchemy import func, or_, and_, case, desc, literal, String, text
+
+from app.utils.catalog_cache import get_catalog_count, invalidate_catalog_count
 
 FUZZY_THRESHOLD = 0.40  # più alto = più rigido
 
@@ -92,7 +94,8 @@ def add_song(
     db.add(new_song)
     db.commit()
     db.refresh(new_song)
-    
+    invalidate_catalog_count(current_dj.id)
+
     return new_song
 
 @router.post("/bulk", status_code=status.HTTP_201_CREATED)
@@ -118,6 +121,7 @@ def bulk_add_songs(
     if to_add:
         db.bulk_save_objects(to_add)
         db.commit()
+        invalidate_catalog_count(current_dj.id)
 
     skipped = len(bulk_data.songs) - len(to_add)
 
@@ -144,7 +148,8 @@ def delete_song(
     
     db.delete(song)
     db.commit()
-    
+    invalidate_catalog_count(current_dj.id)
+
     return {"message": "Canzone eliminata con successo"}
 
 @router.delete("")
@@ -155,6 +160,7 @@ def clear_catalog(
     """Elimina TUTTE le canzoni dal catalogo"""
     deleted_count = db.query(Song).filter(Song.dj_id == current_dj.id).delete()
     db.commit()
+    invalidate_catalog_count(current_dj.id)
     
     return {
         "message": "Catalogo eliminato con successo",
@@ -230,7 +236,8 @@ def get_public_catalog(
         raise HTTPException(status_code=404, detail="DJ non trovato")
 
     # 3. Query canzoni
-    query = db.query(Song).filter(Song.dj_id == dj.id)
+    # Solo la colonna che serve: niente oggetti ORM completi per 1000 righe
+    query = db.query(Song.file_name).filter(Song.dj_id == dj.id)
 
     if search and search.strip():
         phrase = search.strip().lower()
@@ -241,11 +248,25 @@ def get_public_catalog(
         conditions = []
         score = 0
 
+        # L'operatore <<% equivale a strict_word_similarity(t, file_name) >= soglia,
+        # ma a differenza della funzione può usare l'indice GIN idx_songs_dj_trgm.
+        # SET LOCAL vale solo per la transazione di questa richiesta.
+        db.execute(text(
+            f"SET LOCAL pg_trgm.strict_word_similarity_threshold = {FUZZY_THRESHOLD}"
+        ))
+        if long_tokens:
+            # Con parole di 4+ lettere l'indice trigram è il più adatto, ma il
+            # planner tende a preferire l'index-only scan su (dj_id, file_name)
+            # e scorrere tutto il catalogo. Per le sole parole corte invece il
+            # trigram non aiuta e l'index-only scan resta la scelta migliore.
+            db.execute(text("SET LOCAL enable_indexonlyscan = off"))
+
         # Parole lunghe: obbligatorie (contenute oppure simili)
         for t in long_tokens:
             like = Song.file_name.ilike(f"%{t}%")
             sim = func.strict_word_similarity(t, Song.file_name)
-            conditions.append(or_(like, sim >= FUZZY_THRESHOLD))
+            is_similar = literal(t, String).op("<<%")(Song.file_name)
+            conditions.append(or_(like, is_similar))
             score = score + sim + case((like, 1.0), else_=0.0)
 
         # Parole corte: bonus se ci sono parole lunghe, altrimenti filtro
@@ -266,8 +287,8 @@ def get_public_catalog(
 
     # 4. Ritorna solo i nomi dei file (non gli ID)
     return {
-        "songs": [song.file_name for song in songs],
-        "total": db.query(Song).filter(Song.dj_id == dj.id).count(),
+        "songs": [row.file_name for row in songs],
+        "total": get_catalog_count(db, dj.id),
         "dj_name": dj.stage_name
     }
 
