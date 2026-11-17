@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.dj import DJ
@@ -15,8 +16,9 @@ router = APIRouter()
 
 @router.post("/register", response_model=dict, status_code=status.HTTP_201_CREATED)
 def register(dj_data: DJRegister, request: Request, db: Session = Depends(get_db)):
-    # Verifica se email esiste già 
-    existing_dj = db.query(DJ).filter(DJ.email == dj_data.email).first()
+    # Verifica se email esiste già (senza distinguere maiuscole: vale anche per
+    # gli account salvati prima che le email venissero portate in minuscolo)
+    existing_dj = db.query(DJ).filter(func.lower(DJ.email) == dj_data.email).first()
     
     if existing_dj:
         if existing_dj.email_verified:
@@ -74,9 +76,15 @@ def register(dj_data: DJRegister, request: Request, db: Session = Depends(get_db
 
 @router.post("/login", response_model=TokenResponse)
 def login(credentials: DJLogin, db: Session = Depends(get_db)):
-    dj = db.query(DJ).filter(DJ.email == credentials.email).first()
-    
-    if not dj or not verify_password(credentials.password, dj.password_hash):
+    # Senza distinguere maiuscole. Se esistono ancora account doppi creati prima
+    # della correzione (es. Mario@... e mario@...), entra quello con la password giusta.
+    candidates = db.query(DJ).filter(func.lower(DJ.email) == credentials.email).all()
+    dj = next(
+        (c for c in candidates if verify_password(credentials.password, c.password_hash)),
+        None
+    )
+
+    if not dj:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenziali non valide"
@@ -173,8 +181,8 @@ def request_password_reset(
     db: Session = Depends(get_db)
 ):
     """Richiede reset password"""
-    dj = db.query(DJ).filter(DJ.email == request_data.email).first()
-    
+    dj = db.query(DJ).filter(func.lower(DJ.email) == request_data.email).first()
+
     if not dj:
         # Non rivelare se email esiste o no
         return {"message": "Se l'email esiste, riceverai le istruzioni per il reset"}
@@ -254,9 +262,9 @@ def update_current_dj(
     db: Session = Depends(get_db)
 ):
     # Verifica email univoca se fornita
-    if dj_update.email and dj_update.email != current_dj.email:
+    if dj_update.email and dj_update.email != current_dj.email.lower():
         existing_dj = db.query(DJ).filter(
-            DJ.email == dj_update.email,
+            func.lower(DJ.email) == dj_update.email,
             DJ.id != current_dj.id
         ).first()
 
@@ -359,10 +367,10 @@ def resend_verification(
     db: Session = Depends(get_db)
 ):
     """Reinvia email di verifica"""
-    email = request_data.get("email")
-    
+    email = (request_data.get("email") or "").strip().lower()
+
     dj = db.query(DJ).filter(
-        DJ.email == email,
+        func.lower(DJ.email) == email,
         DJ.email_verified == False
     ).first()
     

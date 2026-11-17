@@ -1,15 +1,25 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, Literal
+from pydantic import BaseModel, EmailStr, Field, AfterValidator
+from typing import Optional, Literal, Annotated
+
+
+def normalize_email(email: str) -> str:
+    """Email tutta minuscola e senza spazi: Mario@Gmail.com e mario@gmail.com sono lo stesso DJ."""
+    return email.strip().lower()
+
+
+# EmailStr da solo porta in minuscolo solo il dominio (dopo la @), non la parte prima
+NormalizedEmail = Annotated[EmailStr, AfterValidator(normalize_email)]
+
 
 class DJRegister(BaseModel):
     full_name: str
     stage_name: str
-    email: EmailStr
+    email: NormalizedEmail
     phone: Optional[str] = None
     password: str
 
 class DJLogin(BaseModel):
-    email: EmailStr
+    email: NormalizedEmail
     password: str
 
 class DJResponse(BaseModel):
@@ -35,7 +45,7 @@ class DJUpdate(BaseModel):
     """Schema per aggiornamento dati DJ"""
     full_name: Optional[str] = None
     stage_name: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[NormalizedEmail] = None
     phone: Optional[str] = None
     max_bookings_per_user: Optional[int] = Field(None, ge=1, le=999)
     allow_free_requests: Optional[bool] = None
@@ -51,7 +61,7 @@ class PasswordChange(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     """Schema per richiesta reset password"""
-    email: EmailStr
+    email: NormalizedEmail
 
 class PasswordReset(BaseModel):
     """Schema per reset password"""
